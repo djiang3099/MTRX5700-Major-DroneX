@@ -12,6 +12,7 @@ import geometry_msgs.msg
 import sensor_msgs.msg
 import nav_msgs.msg
 import std_msgs
+import geometry_msgs.msg
 from mtrx_major.msg import Navdata
 from geometry_msgs.msg import Twist, Vector3, Pose, PoseWithCovariance, Point, Quaternion
 from nav_msgs.msg import Odometry
@@ -40,8 +41,9 @@ class DroneX():
         zeroOdomPub = rospy.Publisher('dronex/odom', nav_msgs.msg.Odometry, queue_size=100)
         commandPub = rospy.Publisher('cmd_vel', geometry_msgs.msg.Twist, queue_size=100)    
 
-        
-
+        r = rospy.Rate(30)
+        while not rospy.is_shutdown():
+            r.sleep()
 
     def odom_callback(self, odomMsg):
         print("odom")
@@ -73,6 +75,7 @@ class DroneX():
 
         return
 
+    
 if __name__ == '__main__':
     print('Drone Control started...')
     rospy.init_node('drone_control')
