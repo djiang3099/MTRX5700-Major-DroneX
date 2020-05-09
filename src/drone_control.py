@@ -80,6 +80,8 @@ class DroneX():
         # Define subscribers
         self.odomSub = rospy.Subscriber("ardrone/odometry", nav_msgs.msg.Odometry, self.odom_callback, queue_size=100)
         self.navdataSub = rospy.Subscriber("/ardrone/navdata", Navdata, self.navdata_callback, queue_size=100)
+        self.navdataSub = rospy.Subscriber("droneGoal", nav_msgs.msg.Odometry, self.droneGoal_callback, queue_size=100)
+
 
         # Define publishers
         self.takeoffPub = rospy.Publisher('/ardrone/takeoff', std_msgs.msg.Empty, queue_size=10)
@@ -129,25 +131,19 @@ class DroneX():
         self.zeroOdomPub.publish(odomMsg)   
 
         self.PID.set_pose(odomMsg.pose.pose)
-        self.PID.set_goal(odomMsg.pose.pose)
-        self.goalSet = 1     
+            
         
         return
 
     def navdata_callback(self, navdataMsg):
-        print("     nav")
+        # print("     nav")
         # update the battery status
         self.battery = navdataMsg.batteryPercent
-        print("Odom Stub")
-        self.PID.set_pose(odomMsg.pose.pose)
-        self.PID.set_goal(odomMsg.pose.pose)
-        self.goalSet = 1
-
         return
 
-    def navdata_callback(self, navdataMsg):
-        print("Navdata Stub")
-        return
+    def droneGaoal_callback(self, dronalGoalMsg):
+        self.PID.set_goal(dronalGoalMsg.pose.pose)
+        self.goalSet = 1 
 
     def move(self):
         command = self.PID.compute()
