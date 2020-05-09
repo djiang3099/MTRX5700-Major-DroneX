@@ -8,6 +8,7 @@ import rospy
 import math
 import numpy as np
 
+import geometry_msgs.msg
 import sensor_msgs.msg
 import nav_msgs.msg
 import std_msgs
@@ -36,18 +37,40 @@ class DroneX():
         landingPub = rospy.Publisher('ardrone/land', std_msgs.msg.Empty, queue_size=10)
         estopPub = rospy.Publisher('ardrone/reset', std_msgs.msg.Empty, queue_size=10)
         
-        zeroOdomPub = rospy.Publisher('dronex/odom', nav_msgs.Odometry, queue_size=100)
+        zeroOdomPub = rospy.Publisher('dronex/odom', nav_msgs.msg.Odometry, queue_size=100)
         commandPub = rospy.Publisher('cmd_vel', geometry_msgs.msg.Twist, queue_size=100)    
 
         
 
 
     def odom_callback(self, odomMsg):
-        print("Stub")
+        print("odom")
+        # Store the first odom
+        if (sel.pos == None):
+            print("FIRST ODOM######################")
+            self.initPos = msg.pose.pose.posiion
+            self.initOrient = msg.pose.pose.orientation
+
+        # Subtract current odom by first odom
+        msg.pose.pose.posiion.x = msg.pose.pose.posiion.x- self.initPos
+        msg.pose.pose.posiion.x = msg.pose.pose.posiion.x- self.initPos
+        msg.pose.pose.posiion.x = msg.pose.pose.posiion.x- self.initPos
+
+        # zeroOdomMsg = geometry_msg.msg.poseStamped()
+        # zeroOdomMsg.header.frame_id = "odom"
+        # zeroOdomMsg.pose.position = msg.pose.pose.posiion
+        # zeroOdomMsg.pose.orientation = msg.pose.pose.orientation
+
+        # Publish the subtracted odom
+        zeroOdomPub.publish(msg)        
+        
         return
 
     def navdata_callback(self, navdataMsg):
-        print("Stub")
+        print("     nav")
+        # update the battery status
+        self.battery = msg.batteryPercent
+
         return
 
 if __name__ == '__main__':
@@ -55,3 +78,4 @@ if __name__ == '__main__':
     rospy.init_node('drone_control')
 
     Drone = DroneX()
+    
