@@ -18,13 +18,17 @@ from mtrx_major.msg import Navdata
 from geometry_msgs.msg import Twist, Vector3, Pose, PoseWithCovariance, Point, Quaternion
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu, Image, CompressedImage
-from tf.transformations import euler_from_quaternion
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class DroneController():
-    def __init__(self, kp=1, ki=0, kd=0):
+    def __init__(self, kp=0.05, ki=0, kd=0):
         self.kp = kp
         self.ki = ki
         self.kd = kd
+        self.goalX = 0
+        self.goalY = 0
+        self.goalZ = 0.5
+        self.limit = 0.2
         return
 
     # Setter for current drone pose
@@ -50,10 +54,11 @@ class DroneController():
 
     def compute(self):
         command = Twist()
-        command.linear.x = self.kp * (self.goalX - self.x)
-        command.linear.y = self.kp * (self.goalY - self.y)
-        command.linear.z = self.kp * (self.goalZ - self.z)
-        command.angular.x = self.kp * (self.goalZ - self.z)
+        command.linear.x = min(self.limit, self.kp * (self.goalX - self.x))
+        command.linear.y = min(self.limit, self.kp * (self.goalY - self.y))
+        command.linear.z = min(self.limit, self.kp * (self.goalZ - self.z))
+        command.angular.z = min(self.limit, self.kp * (self.goalZ - self.z))
+
         print(command)
         return command
 
@@ -80,7 +85,7 @@ class DroneX():
         # Define subscribers
         self.odomSub = rospy.Subscriber("ardrone/odometry", nav_msgs.msg.Odometry, self.odom_callback, queue_size=100)
         self.navdataSub = rospy.Subscriber("/ardrone/navdata", Navdata, self.navdata_callback, queue_size=100)
-        self.navdataSub = rospy.Subscriber("droneGoal", nav_msgs.msg.Odometry, self.droneGoal_callback, queue_size=100)
+        self.navdataSub = rospy.Subscriber("droneGoal", geometry_msgs.msg.Pose, self.droneGoal_callback, queue_size=100)
 
 
         # Define publishers
@@ -104,7 +109,8 @@ class DroneX():
         if (self.pos is None):
             print("FIRST ODOM######################")
             self.initPos = copy.copy(odomMsg.pose.pose.position)
-            self.initOrient = copy.copy(odomMsg.pose.pose.orientation)
+            quat = odomMsg.pose.pose.orientation
+            self.initRPY = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
             
             print(odomMsg)
         else:
@@ -115,10 +121,14 @@ class DroneX():
         odomMsg.pose.pose.position.y = odomMsg.pose.pose.position.y- self.initPos.y
         odomMsg.pose.pose.position.z = odomMsg.pose.pose.position.z- self.initPos.z
         
-        odomMsg.pose.pose.orientation.x = odomMsg.pose.pose.orientation.x- self.initOrient.x
-        odomMsg.pose.pose.orientation.y = odomMsg.pose.pose.orientation.y- self.initOrient.y
-        odomMsg.pose.pose.orientation.z = odomMsg.pose.pose.orientation.z- self.initOrient.z
-        
+        quat = odomMsg.pose.pose.orientation
+        roll, pitch, yaw = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
+        newRoll = roll - self.initRPY[0]
+        newPitch = pitch - self.initRPY[1]
+        newYaw = yaw - self.initRPY[2]
+        x,y,z,w = quaternion_from_euler(roll,pitch,yaw,'rxyz')
+        odomMsg.pose.pose.orientation = Quaternion(x,y,z,w)
+       
         # zeroOdomMsg = geometry_msg.msg.poseStamped()
         # zeroOdomMsg.header.frame_id = "odom"
         # zeroOdomMsg.pose.position = msg.pose.pose.posiion
@@ -142,7 +152,9 @@ class DroneX():
         return
 
     def droneGoal_callback(self, droneGoalMsg):
-        self.PID.set_goal(droneGoalMsg.pose.pose)
+        print("######################################")
+        print(droneGoalMsg.position)
+        self.PID.set_goal(droneGoalMsg)
         self.goalSet = 1 
 
     def move(self):
