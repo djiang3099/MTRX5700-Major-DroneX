@@ -21,14 +21,17 @@ from sensor_msgs.msg import Imu, Image, CompressedImage
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class DroneController():
-    def __init__(self, kp=0.05, ki=0, kd=0):
+    def __init__(self, kp=0.15, ki=0, kd=0):
+        self.limit = 0.2
         self.kp = kp
         self.ki = ki
         self.kd = kd
         self.goalX = 0
         self.goalY = 0
         self.goalZ = 0.5
-        self.limit = 0.2
+        self.goalRoll = 0
+        self.goalPitch = 0
+        self.goalYaw = 0
         return
 
     # Setter for current drone pose
@@ -54,10 +57,16 @@ class DroneController():
 
     def compute(self):
         command = Twist()
-        command.linear.x = min(self.limit, self.kp * (self.goalX - self.x))
-        command.linear.y = min(self.limit, self.kp * (self.goalY - self.y))
-        command.linear.z = min(self.limit, self.kp * (self.goalZ - self.z))
-        command.angular.z = min(self.limit, self.kp * (self.goalZ - self.z))
+        x = (self.goalX - self.x)
+        y = (self.goalY - self.y)
+        realx = x*np.cos(self.initYaw) - y*np.sin(self.initYaw)
+        realy = x*np.sin(self.initYaw) + y*np.cos(self.initYaw)
+        command.linear.z = min(self.limit,  self.kp * (self.goalZ - self.z))
+        command.angular.z = min(self.limit, self.kp * (self.goalYaw - self.yaw))
+
+        command.linear.x = min(self.limit,  self.kp * realx)
+        command.linear.y = min(self.limit,  self.kp * realy)
+
 
         print(command)
         return command
@@ -111,7 +120,7 @@ class DroneX():
             self.initPos = copy.copy(odomMsg.pose.pose.position)
             quat = odomMsg.pose.pose.orientation
             self.initRPY = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
-            
+            self.PID.initYaw = self.initRPY[2]
             print(odomMsg)
         else:
             print("here")
