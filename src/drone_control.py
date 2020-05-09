@@ -141,8 +141,8 @@ class DroneX():
         self.battery = navdataMsg.batteryPercent
         return
 
-    def droneGaoal_callback(self, dronalGoalMsg):
-        self.PID.set_goal(dronalGoalMsg.pose.pose)
+    def droneGoal_callback(self, droneGoalMsg):
+        self.PID.set_goal(droneGoalMsg.pose.pose)
         self.goalSet = 1 
 
     def move(self):
