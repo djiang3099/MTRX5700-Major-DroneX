@@ -18,7 +18,7 @@ from mtrx_major.msg import Navdata
 from geometry_msgs.msg import Twist, Vector3, Pose, PoseWithCovariance, Point, Quaternion
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu, Image, CompressedImage
-from tf.transformations import euler_from_quaternion
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class DroneController():
     def __init__(self, kp=1, ki=0, kd=0):
@@ -102,7 +102,8 @@ class DroneX():
         if (self.pos is None):
             print("FIRST ODOM######################")
             self.initPos = copy.copy(odomMsg.pose.pose.position)
-            self.initOrient = copy.copy(odomMsg.pose.pose.orientation)
+            quat = odomMsg.pose.pose.orientation
+            self.initRPY = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
             
             print(odomMsg)
         else:
@@ -113,9 +114,13 @@ class DroneX():
         odomMsg.pose.pose.position.y = odomMsg.pose.pose.position.y- self.initPos.y
         odomMsg.pose.pose.position.z = odomMsg.pose.pose.position.z- self.initPos.z
         
-        odomMsg.pose.pose.orientation.x = odomMsg.pose.pose.orientation.x- self.initOrient.x
-        odomMsg.pose.pose.orientation.y = odomMsg.pose.pose.orientation.y- self.initOrient.y
-        odomMsg.pose.pose.orientation.z = odomMsg.pose.pose.orientation.z- self.initOrient.z
+        quat = odomMsg.pose.pose.orientation
+        roll, pitch, yaw = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
+        newRoll = roll - self.initRPY[0]
+        newPitch = pitch - self.initRPY[1]
+        newYaw = yaw - self.initRPY[2]
+        x,y,z,w = quaternion_from_euler(roll,pitch,yaw,'rxyz')
+        odomMsg.pose.pose.orientation = Quaternion(x,y,z,w)
         
         # zeroOdomMsg = geometry_msg.msg.poseStamped()
         # zeroOdomMsg.header.frame_id = "odom"
@@ -138,16 +143,9 @@ class DroneX():
         print("     nav")
         # update the battery status
         self.battery = navdataMsg.batteryPercent
-        print("Odom Stub")
-        self.PID.set_pose(odomMsg.pose.pose)
-        self.PID.set_goal(odomMsg.pose.pose)
-        self.goalSet = 1
 
         return
 
-    def navdata_callback(self, navdataMsg):
-        print("Navdata Stub")
-        return
 
     def move(self):
         command = self.PID.compute()
