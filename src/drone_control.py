@@ -21,14 +21,17 @@ from sensor_msgs.msg import Imu, Image, CompressedImage
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class DroneController():
-    def __init__(self, kp=0.05, ki=0, kd=0):
+    def __init__(self, kp=0.15, ki=0, kd=0):
+        self.limit = 0.2
         self.kp = kp
         self.ki = ki
         self.kd = kd
         self.goalX = 0
         self.goalY = 0
         self.goalZ = 0.5
-        self.limit = 0.2
+        self.goalRoll = 0
+        self.goalPitch = 0
+        self.goalYaw = 0
         return
 
     # Setter for current drone pose
@@ -59,13 +62,15 @@ class DroneController():
         linxErr = self.goalX - self.x
         linyErr = self.goalY - self.y
         linzErr = self.goalZ - self.z
-        angzErr = self.goalZ - self.z
+        angzErr = self.goalYaw - self.yaw
 
         if abs(linxErr) > thresh:
-            command.linear.x = min(self.limit, self.kp * linxErr)
+            realX = x*np.cos(self.initYaw) - y*np.sin(self.initYaw)
+            command.linear.x = min(self.limit, self.kp * realX)
         else:
             command.linear.x = 0
         if abs(linyErr) > thresh:
+            realY = x*np.sin(self.initYaw) + y*np.cos(self.initYaw)
             command.linear.y = min(self.limit, self.kp * linyErr)
         else:
             command.linear.y = 0
@@ -129,12 +134,20 @@ class DroneX():
             self.initPos = copy.copy(odomMsg.pose.pose.position)
             quat = odomMsg.pose.pose.orientation
             self.initRPY = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
-
+            self.PID.initYaw = self.initRPY[2]
             self.takeoffFlag = 1
 
             print('Drone taking off!! Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
                 .format(self.initPos.x,self.initPos.y,self.initPos.z,\
                     self.initRPY[0],self.initRPY[1],self.initRPY[2]))
+            
+        else:
+            print("here")
+        print(self.initPos.x)
+        # Subtract current odom by first odom
+        odomMsg.pose.pose.position.x = odomMsg.pose.pose.position.x- self.initPos.x
+        odomMsg.pose.pose.position.y = odomMsg.pose.pose.position.y- self.initPos.y
+        odomMsg.pose.pose.position.z = odomMsg.pose.pose.position.z- self.initPos.z
         
         elif self.takeoffFlag == 1:
             # Subtract current odom by first odom
