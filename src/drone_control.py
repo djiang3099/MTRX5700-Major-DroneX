@@ -53,11 +53,30 @@ class DroneController():
         return
 
     def compute(self):
+        thresh = 0.05
         command = Twist()
-        command.linear.x = min(self.limit, self.kp * (self.goalX - self.x))
-        command.linear.y = min(self.limit, self.kp * (self.goalY - self.y))
-        command.linear.z = min(self.limit, self.kp * (self.goalZ - self.z))
-        command.angular.z = min(self.limit, self.kp * (self.goalZ - self.z))
+
+        linxErr = self.goalX - self.x
+        linyErr = self.goalY - self.y
+        linzErr = self.goalZ - self.z
+        angzErr = self.goalZ - self.z
+
+        if abs(linxErr) > thresh:
+            command.linear.x = min(self.limit, self.kp * linxErr)
+        else:
+            command.linear.x = 0
+        if abs(linyErr) > thresh:
+            command.linear.y = min(self.limit, self.kp * linyErr)
+        else:
+            command.linear.y = 0
+        if abs(linzErr) > thresh:
+            command.linear.z = min(self.limit, self.kp * linzErr)
+        else:
+            command.linear.z = 0
+        if abs(angzErr) > thresh:
+            command.angular.z = min(self.limit, self.kp * angzErr)
+        else:
+            command.angular.z = 0
 
         print(command)
         return command
@@ -74,6 +93,7 @@ class DroneX():
         self.battery = 100
         self.initPos = None
         self.initOrient = None
+        self.takeoffFlag = -1
 
         self.goalSet = 0
 
@@ -85,8 +105,8 @@ class DroneX():
         # Define subscribers
         self.odomSub = rospy.Subscriber("ardrone/odometry", nav_msgs.msg.Odometry, self.odom_callback, queue_size=100)
         self.navdataSub = rospy.Subscriber("/ardrone/navdata", Navdata, self.navdata_callback, queue_size=100)
-        self.navdataSub = rospy.Subscriber("droneGoal", geometry_msgs.msg.Pose, self.droneGoal_callback, queue_size=100)
-
+        self.droneGoalSub = rospy.Subscriber("droneGoal", geometry_msgs.msg.Pose, self.droneGoal_callback, queue_size=100)
+        self.takeoffSub = rospy.Subscriber("/ardrone/takeoff", std_msgs.msg.Empty, self.takeoff_callback, queue_size=100)
 
         # Define publishers
         self.takeoffPub = rospy.Publisher('/ardrone/takeoff', std_msgs.msg.Empty, queue_size=10)
@@ -104,45 +124,52 @@ class DroneX():
             r.sleep()
 
     def odom_callback(self, odomMsg):
-        print("odom")
-        # Store the first odom
-        if (self.pos is None):
-            print("FIRST ODOM######################")
+        if self.takeoffFlag == 0:
+            # Reset where we 'zero' the 'world' frame.
             self.initPos = copy.copy(odomMsg.pose.pose.position)
             quat = odomMsg.pose.pose.orientation
             self.initRPY = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
+
+            self.takeoffFlag = 1
+
+            print('Drone taking off!! Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
+                .format(self.initPos.x,self.initPos.y,self.initPos.z,\
+                    self.initRPY[0],self.initRPY[1],self.initRPY[2]))
+        
+        elif self.takeoffFlag == 1:
+            # Subtract current odom by first odom
+            posX = odomMsg.pose.pose.position.x- self.initPos.x
+            posY = odomMsg.pose.pose.position.y- self.initPos.y
+            posZ = odomMsg.pose.pose.position.z- self.initPos.z
+            odomMsg.pose.pose.position.x = posX
+            odomMsg.pose.pose.position.y = posY
+            odomMsg.pose.pose.position.z = posZ
             
-            print(odomMsg)
+            quat = odomMsg.pose.pose.orientation
+            roll, pitch, yaw = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
+            newRoll = roll - self.initRPY[0]
+            newPitch = pitch - self.initRPY[1]
+            newYaw = yaw - self.initRPY[2]
+            x,y,z,w = quaternion_from_euler(roll,pitch,yaw,'rxyz')
+            odomMsg.pose.pose.orientation = Quaternion(x,y,z,w)
+        
+            print('Drone flying!! Zeroed Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
+                .format(posX, posY, posZ, newRoll, newPitch, newYaw))
+
+            # Publish the subtracted odom
+            self.pose = odomMsg.pose.pose
+            self.pos = odomMsg.pose.pose.position
+
+            self.zeroOdomPub.publish(odomMsg)   
+
+            self.PID.set_pose(odomMsg.pose.pose)
+            
         else:
-            print("here")
-        print(self.initPos.x)
-        # Subtract current odom by first odom
-        odomMsg.pose.pose.position.x = odomMsg.pose.pose.position.x- self.initPos.x
-        odomMsg.pose.pose.position.y = odomMsg.pose.pose.position.y- self.initPos.y
-        odomMsg.pose.pose.position.z = odomMsg.pose.pose.position.z- self.initPos.z
-        
-        quat = odomMsg.pose.pose.orientation
-        roll, pitch, yaw = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
-        newRoll = roll - self.initRPY[0]
-        newPitch = pitch - self.initRPY[1]
-        newYaw = yaw - self.initRPY[2]
-        x,y,z,w = quaternion_from_euler(roll,pitch,yaw,'rxyz')
-        odomMsg.pose.pose.orientation = Quaternion(x,y,z,w)
-       
-        # zeroOdomMsg = geometry_msg.msg.poseStamped()
-        # zeroOdomMsg.header.frame_id = "odom"
-        # zeroOdomMsg.pose.position = msg.pose.pose.posiion
-        # zeroOdomMsg.pose.orientation = msg.pose.pose.orientation
-
-        # Publish the subtracted odom
-        self.pose = odomMsg.pose.pose
-        self.pos = odomMsg.pose.pose.position
-
-        self.zeroOdomPub.publish(odomMsg)   
-
-        self.PID.set_pose(odomMsg.pose.pose)
-            
-        
+            pos = copy.copy(odomMsg.pose.pose.position)
+            quat = odomMsg.pose.pose.orientation
+            rpy = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
+            print('Waiting for takeoff... Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
+                .format(pos.x,pos.y,pos.z,rpy[0],rpy[1],rpy[2]))
         return
 
     def navdata_callback(self, navdataMsg):
@@ -156,6 +183,16 @@ class DroneX():
         print(droneGoalMsg.position)
         self.PID.set_goal(droneGoalMsg)
         self.goalSet = 1 
+        return
+
+    def takeoff_callback(self, takeoffMsg):
+        print('Taking off!')
+        # Reset takeoff flag, need to rezero the 'world' frame.
+        self.takeoffFlag = 0
+
+        # Wait for 4 seconds to allow drone to takeoff uninterrupted
+        rospy.sleep(4.)
+        return
 
     def move(self):
         command = self.PID.compute()
