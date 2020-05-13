@@ -21,7 +21,7 @@ from sensor_msgs.msg import Imu, Image, CompressedImage
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class DroneController():
-    def __init__(self, kp=0.15, ki=0, kd=0):
+    def __init__(self, kp=0.3, ki=0, kd=0):
         self.limit = 0.2
         self.kp = kp
         self.ki = ki
@@ -66,22 +66,35 @@ class DroneController():
 
         if abs(linxErr) > thresh:
             realX = linxErr*np.cos(self.initYaw) - linyErr*np.sin(self.initYaw)
-            command.linear.x = min(self.limit, self.kp * realX)
+            sign = 1
+            if linxErr < 0:
+                sign = -1
+            command.linear.x = sign * min(self.limit, abs(self.kp * realX))
+            
         else:
             command.linear.x = 0
         if abs(linyErr) > thresh:
             realY = linxErr*np.sin(self.initYaw) + linyErr*np.cos(self.initYaw)
-            command.linear.y = min(self.limit, self.kp * linyErr)
+            sign = 1
+            if linyErr < 0:
+                sign = -1
+            command.linear.y = sign* min(self.limit, abs(self.kp * linyErr))
         else:
             command.linear.y = 0
         if abs(linzErr) > thresh:
-            command.linear.z = min(self.limit, self.kp * linzErr)
+            sign = 1
+            if linzErr < 0:
+                sign = -1
+            command.linear.z = sign * min(self.limit, abs(self.kp * linzErr))
             print('Z-Kp Conrol - {}'.format(linzErr))
         else:
             command.linear.z = 0
             print("Z - zero")
         if abs(angzErr) > thresh:
-            command.angular.z = min(self.limit, self.kp * angzErr)
+            sign = 1
+            if angzErr < 0:
+                sign = -1
+            command.angular.z = sign * min(self.limit, abs(self.kp * angzErr))
         else:
             command.angular.z = 0
 
@@ -155,7 +168,7 @@ class DroneX():
             # Subtract current odom by first odom
             posX = odomMsg.pose.pose.position.x- self.initPos.x
             posY = odomMsg.pose.pose.position.y- self.initPos.y
-            posZ = odomMsg.pose.pose.position.z- self.initPos.z
+            posZ = odomMsg.pose.pose.position.z #- self.initPos.z
             odomMsg.pose.pose.position.x = posX
             odomMsg.pose.pose.position.y = posY
             odomMsg.pose.pose.position.z = posZ
