@@ -65,19 +65,21 @@ class DroneController():
         angzErr = self.goalYaw - self.yaw
 
         if abs(linxErr) > thresh:
-            realX = x*np.cos(self.initYaw) - y*np.sin(self.initYaw)
+            realX = linxErr*np.cos(self.initYaw) - linyErr*np.sin(self.initYaw)
             command.linear.x = min(self.limit, self.kp * realX)
         else:
             command.linear.x = 0
         if abs(linyErr) > thresh:
-            realY = x*np.sin(self.initYaw) + y*np.cos(self.initYaw)
+            realY = linxErr*np.sin(self.initYaw) + linyErr*np.cos(self.initYaw)
             command.linear.y = min(self.limit, self.kp * linyErr)
         else:
             command.linear.y = 0
         if abs(linzErr) > thresh:
             command.linear.z = min(self.limit, self.kp * linzErr)
+            print('Z-Kp Conrol - {}'.format(linzErr))
         else:
             command.linear.z = 0
+            print("Z - zero")
         if abs(angzErr) > thresh:
             command.angular.z = min(self.limit, self.kp * angzErr)
         else:
@@ -112,6 +114,7 @@ class DroneX():
         self.navdataSub = rospy.Subscriber("/ardrone/navdata", Navdata, self.navdata_callback, queue_size=100)
         self.droneGoalSub = rospy.Subscriber("droneGoal", geometry_msgs.msg.Pose, self.droneGoal_callback, queue_size=100)
         self.takeoffSub = rospy.Subscriber("/ardrone/takeoff", std_msgs.msg.Empty, self.takeoff_callback, queue_size=100)
+        self.landSub = rospy.Subscriber("/ardrone/land", std_msgs.msg.Empty, self.land_callback, queue_size=100)
 
         # Define publishers
         self.takeoffPub = rospy.Publisher('/ardrone/takeoff', std_msgs.msg.Empty, queue_size=10)
@@ -175,6 +178,8 @@ class DroneX():
             rpy = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
             print('Waiting for takeoff... Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
                 .format(pos.x,pos.y,pos.z,rpy[0],rpy[1],rpy[2]))
+
+            print("battery - {}".format(self.battery))
         return
 
     def navdata_callback(self, navdataMsg):
@@ -197,6 +202,12 @@ class DroneX():
 
         # Wait for 4 seconds to allow drone to takeoff uninterrupted
         rospy.sleep(4.)
+        print("Finished sleeping")
+        return
+
+    def land_callback(self, landMsg):
+        print ("Land")
+
         return
 
     def move(self):
