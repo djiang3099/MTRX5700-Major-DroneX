@@ -101,6 +101,7 @@ class DroneX():
         self.initPos = None
         self.initOrient = None
         self.takeoffFlag = -1
+        self.prevAltitude = -1
 
         self.goalSet = 0
 
@@ -112,9 +113,9 @@ class DroneX():
         # Define subscribers
         self.odomSub = rospy.Subscriber("ardrone/odometry", nav_msgs.msg.Odometry, self.odom_callback, queue_size=100)
         self.navdataSub = rospy.Subscriber("/ardrone/navdata", Navdata, self.navdata_callback, queue_size=100)
-        self.droneGoalSub = rospy.Subscriber("droneGoal", geometry_msgs.msg.Pose, self.droneGoal_callback, queue_size=100)
-        self.takeoffSub = rospy.Subscriber("/ardrone/takeoff", std_msgs.msg.Empty, self.takeoff_callback, queue_size=100)
-        self.landSub = rospy.Subscriber("/ardrone/land", std_msgs.msg.Empty, self.land_callback, queue_size=100)
+        self.droneGoalSub = rospy.Subscriber("droneGoal", geometry_msgs.msg.Pose, self.droneGoal_callback, queue_size=1000)
+        self.takeoffSub = rospy.Subscriber("/ardrone/takeoff", std_msgs.msg.Empty, self.takeoff_callback, queue_size=1000)
+        self.landSub = rospy.Subscriber("/ardrone/land", std_msgs.msg.Empty, self.land_callback, queue_size=1000)
 
         # Define publishers
         self.takeoffPub = rospy.Publisher('/ardrone/takeoff', std_msgs.msg.Empty, queue_size=10)
@@ -131,20 +132,26 @@ class DroneX():
                 self.move()
             r.sleep()
 
+        print("Battery state: {}".format(self.battery))
+
     def odom_callback(self, odomMsg):
-        if self.takeoffFlag == 0:
+        if self.takeoffFlag == 0:   # Drone taking off
             # Reset where we 'zero' the 'world' frame.
             self.initPos = copy.copy(odomMsg.pose.pose.position)
             quat = odomMsg.pose.pose.orientation
             self.initRPY = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
             self.PID.initYaw = self.initRPY[2]
-            self.takeoffFlag = 1
-
+            # print("Prev alt: {:.4f}, curr alt: {:.4f}".format(self.prevAltitude))
+            if self.prevAltitude > self.initPos.z:
+                self.takeoffFlag = 1
+            else: 
+                self.prevAltitude = self.initPos.z
+            
             print('Drone taking off!! Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
                 .format(self.initPos.x,self.initPos.y,self.initPos.z,\
                     self.initRPY[0],self.initRPY[1],self.initRPY[2]))
         
-        elif self.takeoffFlag == 1:
+        elif self.takeoffFlag == 1:     # Drone is in flight
             # Subtract current odom by first odom
             posX = odomMsg.pose.pose.position.x- self.initPos.x
             posY = odomMsg.pose.pose.position.y- self.initPos.y
@@ -172,14 +179,12 @@ class DroneX():
 
             self.PID.set_pose(odomMsg.pose.pose)
             
-        else:
+        else:   # Waiting for takeoff, just publish status
             pos = copy.copy(odomMsg.pose.pose.position)
             quat = odomMsg.pose.pose.orientation
             rpy = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
-            print('Waiting for takeoff... Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
-                .format(pos.x,pos.y,pos.z,rpy[0],rpy[1],rpy[2]))
-
-            print("battery - {}".format(self.battery))
+            print('Waiting for takeoff... Battery: {}, Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
+                .format(self.battery,pos.x,pos.y,pos.z,rpy[0],rpy[1],rpy[2]))
         return
 
     def navdata_callback(self, navdataMsg):
