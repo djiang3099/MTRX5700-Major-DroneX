@@ -65,8 +65,8 @@ class DroneController():
         angzErr = self.goalYaw - self.yaw
 
         if abs(linxErr) > thresh:
-            realX = linxErr*np.cos(self.initYaw) - linyErr*np.sin(self.initYaw)
             sign = 1
+            realX = linxErr*np.cos(-self.initYaw) - linyErr*np.sin(-self.initYaw)
             if linxErr < 0:
                 sign = -1
             command.linear.x = sign * min(self.limit, abs(self.kp * realX))
@@ -74,11 +74,11 @@ class DroneController():
         else:
             command.linear.x = 0
         if abs(linyErr) > thresh:
-            realY = linxErr*np.sin(self.initYaw) + linyErr*np.cos(self.initYaw)
+            realY = linxErr*np.sin(-self.initYaw) + linyErr*np.cos(-self.initYaw)
             sign = 1
             if linyErr < 0:
                 sign = -1
-            command.linear.y = sign* min(self.limit, abs(self.kp * linyErr))
+            command.linear.y = sign* min(self.limit, abs(self.kp * realY))
         else:
             command.linear.y = 0
         if abs(linzErr) > thresh:
