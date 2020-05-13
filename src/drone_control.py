@@ -140,14 +140,6 @@ class DroneX():
             print('Drone taking off!! Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
                 .format(self.initPos.x,self.initPos.y,self.initPos.z,\
                     self.initRPY[0],self.initRPY[1],self.initRPY[2]))
-            
-        else:
-            print("here")
-        print(self.initPos.x)
-        # Subtract current odom by first odom
-        odomMsg.pose.pose.position.x = odomMsg.pose.pose.position.x- self.initPos.x
-        odomMsg.pose.pose.position.y = odomMsg.pose.pose.position.y- self.initPos.y
-        odomMsg.pose.pose.position.z = odomMsg.pose.pose.position.z- self.initPos.z
         
         elif self.takeoffFlag == 1:
             # Subtract current odom by first odom
