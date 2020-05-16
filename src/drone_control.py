@@ -28,16 +28,26 @@ class DroneController():
         self.lastTime = 0
 
         # Saturation limit and Gains for controller
-        self.limit = 0.2
+        self.ctrlLimit = 0.2    # Max control output
+        self.errThresh = 0.05   # Threshold to use hover functionality
         self.kp = kp
         self.ki = ki
         self.kd = kd
 
         # Store previous error for derivative control
-        self.dErrorX = 0
-        self.dErrorY = 0
-        self.dErrorZ = 0
-        self.dErrorYaw = 0
+        self.prevErrorX = 0
+        self.prevErrorY = 0
+        self.prevErrorZ = 0
+        self.prevErrorYaw = 0
+
+        # Integral control history
+        self.i_linX = 0
+        self.i_linY = 0
+        self.i_linZ = 0
+        self.i_angZ = 0
+
+        # Integral controller saturation
+        self.intSat = 3
 
         # Store the goal pose
         self.goalX = 0
@@ -71,54 +81,67 @@ class DroneController():
         return
 
     def compute(self, time):
-        thresh = 0.05   # Threshold to use hover functionality
         command = Twist()
         dt = self.lastTime - time
         self.lastTime = time
 
-        linxErr = self.goalX - self.x
-        linyErr = self.goalY - self.y
-        linzErr = self.goalZ - self.z
-        angzErr = self.goalYaw - self.yaw
+        # Compute Proportional error
+        linXErr = self.goalX - self.x
+        linYErr = self.goalY - self.y
+        linZErr = self.goalZ - self.z
+        angZErr = self.goalYaw - self.yaw
 
-        if abs(linxErr) > thresh:
-            sign = 1
-            realX = linxErr*np.cos(-self.initYaw) - linyErr*np.sin(-self.initYaw)
-            if linxErr < 0:
-                sign = -1
-            command.linear.x = sign * min(self.limit, abs(self.kp * realX))
-            
-        else:
+        # Transform the error into the 'world' frame
+        realX = linXErr*np.cos(-self.initYaw) - linYErr*np.sin(-self.initYaw)
+        realY = linXErr*np.sin(-self.initYaw) + linYErr*np.cos(-self.initYaw)
+
+        # Compute Derivative error
+        d_linXErr = (realX - self.prevErrorX)/dt
+        d_linYErr = (realY - self.prevErrorY)/dt
+        d_linZErr = (linZErr - self.prevErrorZ)/dt
+        d_angZErr = (angZErr - self.prevErrorYaw)/dt
+
+        # Update previous error
+        self.prevErrorX = realX
+        self.prevErrorY = realY
+        self.prevErrorZ = linZErr
+        self.prevErrorYaw = angZErr
+
+        # Compute Integral error with saturation
+        self.i_linX = np.sign(self.i_linX + realX*dt) * min(self.intSat, \
+            abs(self.i_linX + realX*dt))
+        self.i_linY = np.sign(self.i_linY + realY*dt) * min(self.intSat, \
+            abs(self.i_linY + realY*dt))
+        self.i_linZ = np.sign(self.i_linZ + linZErr*dt) * min(self.intSat, \
+            abs(self.i_linZ + linZErr*dt))
+        self.i_angZ = np.sign(self.i_angZ + angZErr*dt) * min(self.intSat, \
+            abs(self.i_angZ + angZErr*dt))
+
+        # If very close to the goal, hover
+        if abs(linXErr) < self.errThresh and abs(linYErr) < self.errThresh and \
+            abs(linZErr) < self.errThresh and abs(angZErr) < self.errThresh:
             command.linear.x = 0
-        if abs(linyErr) > thresh:
-            realY = linxErr*np.sin(-self.initYaw) + linyErr*np.cos(-self.initYaw)
-            sign = 1
-            if linyErr < 0:
-                sign = -1
-            command.linear.y = sign* min(self.limit, abs(self.kp * realY))
-        else:
             command.linear.y = 0
-        if abs(linzErr) > thresh:
-            sign = 1
-            if linzErr < 0:
-                sign = -1
-            command.linear.z = sign * min(self.limit, abs(self.kp * linzErr))
-            print('Z-Kp Conrol - {}'.format(linzErr))
-        else:
             command.linear.z = 0
-            print("Z - zero")
-        if abs(angzErr) > thresh:
-            sign = 1
-            if angzErr < 0:
-                sign = -1
-            command.angular.z = sign * min(self.limit, abs(self.kp * angzErr))
-        else:
+            command.angular.x = 0
+            command.angular.y = 0
             command.angular.z = 0
 
-        self.dErrorX = linxErr
-        self.dErrorY = linyErr
-        self.dErrorZ = linzErr
-        self.dErrorYaw = angzErr
+        else:
+            controlX = (self.kp * realX) + (self.kd * d_linXErr) + (self.ki * i_linX)
+            command.linear.x = np.sign(controlX) * min(self.ctrlLimit, abs(controlX))
+
+            controlY = (self.kp * realY) + (self.kd * d_linYErr) + (self.ki * i_linY)
+            command.linear.y = np.sign(controlY)* min(self.ctrlLimit, abs(controlY))
+            
+            controlZ = (self.kp * linZErr) + (self.kd * d_linZErr) + (self.ki * i_linZ)
+            command.linear.z = np.sign(controlZ) * min(self.ctrlLimit, abs(controlZ))
+            
+            controlYaw = (self.kp * angZErr) + (self.kd * d_angZErr) + (self.ki * i_angZ)
+            command.angular.z = np.sign(controlYaw) * min(self.ctrlLimit, abs(controlYaw))
+
+            command.angular.x = 0
+            command.angular.y = 0
 
         print(command)
         return command
