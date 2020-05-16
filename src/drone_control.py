@@ -21,17 +21,32 @@ from sensor_msgs.msg import Imu, Image, CompressedImage
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class DroneController():
-    def __init__(self, kp=0.3, ki=0, kd=0):
+    def __init__(self, kp=0.3, ki=0, kd=0.3):
+        # Track the time the controller is called at and initial time
+        while rospy.get_time() == 0:    # For simulated time
+            self.initTime = rospy.get_time()
+        self.lastTime = 0
+
+        # Saturation limit and Gains for controller
         self.limit = 0.2
         self.kp = kp
         self.ki = ki
         self.kd = kd
+
+        # Store previous error for derivative control
+        self.dErrorX = 0
+        self.dErrorY = 0
+        self.dErrorZ = 0
+        self.dErrorYaw = 0
+
+        # Store the goal pose
         self.goalX = 0
         self.goalY = 0
         self.goalZ = 0.5
         self.goalRoll = 0
         self.goalPitch = 0
         self.goalYaw = 0
+
         return
 
     # Setter for current drone pose
@@ -55,9 +70,11 @@ class DroneController():
             euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
         return
 
-    def compute(self):
-        thresh = 0.05
+    def compute(self, time):
+        thresh = 0.05   # Threshold to use hover functionality
         command = Twist()
+        dt = self.lastTime - time
+        self.lastTime = time
 
         linxErr = self.goalX - self.x
         linyErr = self.goalY - self.y
@@ -97,6 +114,11 @@ class DroneController():
             command.angular.z = sign * min(self.limit, abs(self.kp * angzErr))
         else:
             command.angular.z = 0
+
+        self.dErrorX = linxErr
+        self.dErrorY = linyErr
+        self.dErrorZ = linzErr
+        self.dErrorYaw = angzErr
 
         print(command)
         return command
@@ -228,8 +250,10 @@ class DroneX():
 
         return
 
+    # So long as a goal has been set, this gets called at 30Hz
     def move(self):
-        command = self.PID.compute()
+        currTime = rospy.get_time() - self.initTime
+        command = self.PID.compute(currTime)
         self.commandPub.publish(command)
         print("PUBLISHED!")
 
