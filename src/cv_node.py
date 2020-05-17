@@ -27,9 +27,11 @@ class CvDrone:
         self.greenLower = (49, 21, 42)
         self.greenUpper = (103, 150, 106)
 
+        self.output = np.array([360,640,3])
+
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
-            print(".")
+            cv2.imshow("Output", self.output)
             r.sleep()
         return
 
@@ -49,9 +51,11 @@ class CvDrone:
 
         frame = self.preprocess(image)
 
-        self.output,_,_ = self.get_contours(frame)
+        cv2.imshow("Output", image)
+        while (cv2.waitKey(1) != 27):
+            a = 1
 
-        cv2.imshow("Output", self.output)
+        self.output = self.get_contours(frame)
 
 
         return
@@ -67,7 +71,6 @@ class CvDrone:
     def get_contours(self, frame):
         # Mask
         maskline = cv2.inRange(frame, self.greenLower, self.greenUpper)
-        validCont = []  # Store all the 'real' contours
         contourImage,contours,_ = cv2.findContours(maskline, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         # Find largest contour
@@ -77,9 +80,8 @@ class CvDrone:
             if (cv2.contourArea(contour) > maxArea):
                 maxContour = contour
                 maxArea = cv2.contourArea(contour)
-                validCont.append(contour)
-                print("Valid cont")
-        contourImage = cv2.drawContours(frame, validCont, -1, (255,0,0), 2)
+
+        contourImage = cv2.drawContours(frame, maxContour, -1, (255,0,0), 2)
         maskline = cv2.cvtColor(maskline, cv2.COLOR_GRAY2RGB, dst=maskline)
         contourImage = cv2.cvtColor(contourImage, cv2.COLOR_HSV2BGR, dst=contourImage)  
 
@@ -95,9 +97,9 @@ class CvDrone:
         else:
             valid = False
         
-        print("Valid? {} | No. of Contours: {}".format(valid, len(validCont)))
+        # print("Valid? {} | No. of Contours: {}".format(valid, len(validCont)))
         concat = cv2.vconcat([contourImage,maskline])
-        return concat, valid, len(validCont)
+        return concat
 
 def main():
 
