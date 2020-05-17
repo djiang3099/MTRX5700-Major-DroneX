@@ -9,6 +9,8 @@ import argparse
 import rospy
 from cv_bridge import CvBridge
 import sensor_msgs
+import geometry_msgs.msg
+from geometry_msgs.msg import Twist, Vector3, Pose, PoseWithCovariance, Point, Quaternion
 from std_msgs.msg import Int8
 from sensor_msgs.msg import(
 Image,
@@ -23,9 +25,12 @@ class CvDrone:
         self.cam_sub = rospy.Subscriber('/ardrone/front/image_raw', \
             Image, self.cam_callback, queue_size=100)
 
+        self.commandPub = rospy.Publisher('cmd_vel', geometry_msgs.msg.Twist, queue_size=100)    
+
+
         # Thresholds
         self.greenLower = (49, 21, 42)
-        self.greenUpper = (103, 150, 106)
+        self.greenUpper = (103, 176, 160)
 
         self.first = True
         self.centreX = None
@@ -68,6 +73,8 @@ class CvDrone:
             self.centreY = size[1]/2
             self.refHeight = size[0]/5
             self.refWidth = size[1]/10
+
+            self.ctrlLimit = 0.1
 
         self.commandDrone(targetY, targetZ, targetW, targetH)
 
@@ -128,11 +135,11 @@ class CvDrone:
         offsetY = self.centreY - targetY
         offsetZ = self.centreZ - targetZ
 
-        velY = offsetY * 0.01
-        velZ = offsetZ * 0.01
+        velY = offsetY * 0.0005
+        velZ = offsetZ * 0.0005
 
         if ( (abs(w-self.refWidth) > 10 ) and   (abs (h-self.refHeight) > 10 ) ):
-            velX = (self.refHeight - h) * 0.01
+            velX = (self.refHeight - h) * 0.005
         else:
             velX = 0.0
 
@@ -151,6 +158,21 @@ class CvDrone:
             c = "Back   "
 
         print("{}, {:.2}, {}, {:.2}, {}, {:.2}".format(a, velY, b, velZ, c, velX))
+
+
+        command = Twist()
+        command.linear.x = np.sign(velX) * min(self.ctrlLimit, abs(velX))
+        command.linear.y = np.sign(velY) * min(self.ctrlLimit, abs(velY))
+        command.linear.z = np.sign(velZ) * min(self.ctrlLimit, abs(velZ))
+        command.angular.x = 0
+        command.angular.y = 0
+        command.angular.z = 0
+        print(command)
+
+        # self.commandPub.publish(command)
+
+
+
 
         return
 
