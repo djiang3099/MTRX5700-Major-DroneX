@@ -32,6 +32,8 @@ def cam_callback(image_message):
     cv2.imshow("frame", frame)
     cv2.waitKey(20)
 
+    commandDrone(frame)
+
     return frame
 
 # Extract block coordinates from the image
@@ -77,6 +79,13 @@ def find_target(image):
     #print(contours)
 
     return xList, yList, wList, hList
+
+
+def commandDrone(frame):
+    print(frame.shape)
+    print(frame.shape[0])
+    print(frame.shape[1])
+    print(frame.shape[2])
 
 
 

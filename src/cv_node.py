@@ -27,6 +27,12 @@ class CvDrone:
         self.greenLower = (49, 21, 42)
         self.greenUpper = (103, 150, 106)
 
+        self.first = True
+        self.centreX = None
+        self.centreY = None
+
+
+
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
             print(".")
@@ -53,6 +59,12 @@ class CvDrone:
 
         cv2.imshow("Output", self.output)
 
+        if first:
+            size = frame.shape
+            self.centreY = size[0]/2
+            self.centreX = size[1]/2
+
+        commandDrone(frame)
 
         return
 
@@ -98,6 +110,9 @@ class CvDrone:
         print("Valid? {} | No. of Contours: {}".format(valid, len(validCont)))
         concat = cv2.vconcat([contourImage,maskline])
         return concat, valid, len(validCont)
+
+    def commandDrone(self, targetX, targetY):
+        # Calculate 
 
 def main():
 
