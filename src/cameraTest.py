@@ -34,6 +34,51 @@ def cam_callback(image_message):
 
     return frame
 
+# Extract block coordinates from the image
+def find_target(image):
+    """
+    This function extracts bounding boxes of the blocks from the input image
+    :param image: OpenCV Image in rgb8 format
+    :type image: OpenCV Image aka numpy array
+    :return: List of bounding boxes of the blocks in the image plane
+    """
+    image_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # image_cropped = image_hsv[ 0:640, 0:580 ]
+    greenLower = (49, 21, 42)
+    greenUpper = (103, 150, 106)
+
+    mask = cv2.inRange(image_cropped, greenLower, greenUpper)
+    contourImage, contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contourImage = cv2.drawContours(image, contours, -1, (0, 255,0), 2)
+
+    xList = []
+    yList = []
+    wList = []
+    hList = []
+
+
+    for contour in contours:
+	# x, y is the top-left corner
+        x, y, w, h = cv2.boundingRect(contour)
+        xList.append(x + w/2)
+        yList.append(y + h/2)
+        wList.append(w)
+        hList.append(h)
+        #contourImage = cv2.circle(contourImage, (x, y), 5, (255, 0, 0), 2)
+        #contourImage = cv2.circle(contourImage, (x, y+h), 5, (0, 0, 255), 2)
+    cv2.imshow("original image",image)
+    cv2.waitKey(2000)
+    cv2.imshow("original image",image_cropped)
+    cv2.waitKey(2000)
+    cv2.imshow("original image",whiteMasked)
+    cv2.waitKey(2000)
+    cv2.imshow("original image",contourImage)
+    cv2.waitKey(2000)
+    #print(contours)
+
+    return xList, yList, wList, hList
+
+
 
 def main():
 

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 #bag = rosbag.Bag("path1.bag")
 #bag = rosbag.Bag("path2.bag")
 #bag = rosbag.Bag("SLAMBag.bag")
-bag = rosbag.Bag("bagfiles/wed3_pd.bag")
+bag = rosbag.Bag("bagfiles/sun_N_007_005_pYaw.bag")
 print("Starting...")
 # rospy.init_node("readBags")
 
