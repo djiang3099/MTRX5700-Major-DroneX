@@ -91,8 +91,8 @@ class DroneController():
         angZErr = self.goalYaw - self.yaw
 
         # Transform the error into the 'world' frame
-        realX = linXErr*np.cos(-self.initYaw) - linYErr*np.sin(-self.initYaw)
-        realY = linXErr*np.sin(-self.initYaw) + linYErr*np.cos(-self.initYaw)
+        realX = linXErr*np.cos(-self.yaw) - linYErr*np.sin(-self.yaw)
+        realY = linXErr*np.sin(-self.yaw) + linYErr*np.cos(-self.yaw)
 
         # Compute Derivative error
         d_linXErr = (realX - self.prevErrorX)/dt
