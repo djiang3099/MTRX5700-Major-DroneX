@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 #bag = rosbag.Bag("path1.bag")
 #bag = rosbag.Bag("path2.bag")
 #bag = rosbag.Bag("SLAMBag.bag")
-bag = rosbag.Bag("bagfiles/wed3_noVid.bag")
+bag = rosbag.Bag("bagfiles/wed3_pd.bag")
 print("Starting...")
 # rospy.init_node("readBags")
 
@@ -65,10 +65,6 @@ for topic, msg, t in bag.read_messages(topics=["/cmd_vel"]):
 	com_z_vect.append(com_z)
 	com_az_vect.append(com_az)
 
-	if first:
-		t_first = t.to_time()
-		first = False
-
 	t_com_Vect.append(t.to_time() - t_first)
 
 first = True
@@ -85,10 +81,6 @@ for topic, msg, t in bag.read_messages(topics=["/droneGoal"]):
 	goal_y_vect.append(goal_y)
 	goal_z_vect.append(goal_z)
 	goal_az_vect.append(goal_az)
-
-	if first:
-		t_first = t.to_time()
-		first = False
 
 	t_goal_vect.append(t.to_time() - t_first)
 
