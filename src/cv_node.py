@@ -41,7 +41,7 @@ class CvDrone:
         return
 
     def cam_callback(self, image_message):
-        print("Image received")        
+        # print("Image received")        
         # Convert from ROS image to opencv image
         ###### For non compressed images
         # cv_image = self.bridge.imgmsg_to_cv2(image_message, desired_encoding="bgr8")
@@ -61,8 +61,10 @@ class CvDrone:
 
         if self.first:
             size = frame.shape
-            self.centreY = size[0]/2
-            self.centreX = size[1]/2
+            self.centreZ = size[0]/2
+            self.centreY = size[1]/2
+            self.refHeight = size[0]/5
+            self.refWidth = size[1]/10
 
         self.commandDrone(targetY, targetZ, targetW, targetH)
 
@@ -112,7 +114,32 @@ class CvDrone:
         return concat, targetY, targetZ, w, h
 
     def commandDrone(self, targetY, targetZ, w, h):
-        # Calculate 
+        # Calculate offset from the target
+        offsetY = self.centreY - targetY
+        offsetZ = self.centreZ - targetZ
+
+        velY = offsetY * 0.01
+        velZ = offsetZ * 0.01
+
+        if ( (abs(w-self.refWidth) > 10 ) and   (abs (h-self.refHeight) > 10 ) )
+            velX = (self.refHeight - h) * 0.01
+
+        # Print statements, for debugging
+        if velY > 0:
+            print("Left")
+        else:
+            print("Right")
+
+        if velZ > 0:
+            print("Up")
+        else:
+            print("Down")
+
+        if velX > 0:
+            print("Foward")
+        else:
+            print("Back")
+
         return
 
 def main():
