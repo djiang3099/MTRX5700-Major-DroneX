@@ -23,6 +23,9 @@ class CvDrone:
         self.cam_sub = rospy.Subscriber('/ardrone/front/image_raw/compressed', \
             CompressedImage, self.cam_callback, queue_size=100)
 
+        self.commandPub = rospy.Publisher('cmd_vel', geometry_msgs.msg.Twist, queue_size=100)    
+
+
         # Thresholds
         self.greenLower = (49, 21, 42)
         self.greenUpper = (103, 150, 106)
@@ -65,6 +68,8 @@ class CvDrone:
             self.centreY = size[1]/2
             self.refHeight = size[0]/5
             self.refWidth = size[1]/10
+
+            self.ctrlLimit = 0.1
 
         self.commandDrone(targetY, targetZ, targetW, targetH)
 
@@ -118,11 +123,11 @@ class CvDrone:
         offsetY = self.centreY - targetY
         offsetZ = self.centreZ - targetZ
 
-        velY = offsetY * 0.01
-        velZ = offsetZ * 0.01
+        velY = offsetY * 0.005
+        velZ = offsetZ * 0.005
 
-        if ( (abs(w-self.refWidth) > 10 ) and   (abs (h-self.refHeight) > 10 ) )
-            velX = (self.refHeight - h) * 0.01
+        if ( (abs(w-self.refWidth) > 10 ) and   (abs (h-self.refHeight) > 10 ) ):
+            velX = (self.refHeight - h) * 0.005
 
         # Print statements, for debugging
         if velY > 0:
@@ -139,6 +144,21 @@ class CvDrone:
             print("Foward")
         else:
             print("Back")
+
+
+        command = Twist()
+        command.linear.x = min(self.ctrlLimit, abs(VelX))
+        command.linear.y = min(self.ctrlLimit, abs(VelY))
+        command.linear.z = min(self.ctrlLimit, abs(VelZ))
+        command.angular.x = 0
+        command.angular.y = 0
+        command.angular.z = 0
+        print(command)
+
+        # self.commandPub.publish(command)
+
+
+
 
         return
 
