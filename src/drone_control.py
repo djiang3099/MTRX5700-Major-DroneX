@@ -185,9 +185,6 @@ class DroneX():
 
         r = rospy.Rate(30)
         while not rospy.is_shutdown():
-
-            if self.goalSet == 1:
-                self.move()
             r.sleep()
 
         print("Battery state: {}".format(self.battery))
@@ -223,7 +220,7 @@ class DroneX():
             newRoll = roll - self.initRPY[0]
             newPitch = pitch - self.initRPY[1]
             newYaw = yaw - self.initRPY[2]
-            x,y,z,w = quaternion_from_euler(roll,pitch,yaw,'rxyz')
+            x,y,z,w = quaternion_from_euler(newRoll,newPitch,newYaw,'rxyz')
             odomMsg.pose.pose.orientation = Quaternion(x,y,z,w)
         
             print('Drone flying!! Zeroed Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
@@ -236,6 +233,9 @@ class DroneX():
             self.zeroOdomPub.publish(odomMsg)   
 
             self.PID.set_pose(odomMsg.pose.pose)
+
+            if self.goalSet == 1:
+                self.move()
             
         else:   # Waiting for takeoff, just publish status
             pos = copy.copy(odomMsg.pose.pose.position)
@@ -243,6 +243,7 @@ class DroneX():
             rpy = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
             print('Waiting for takeoff... Battery: {}, Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
                 .format(self.battery,pos.x,pos.y,pos.z,rpy[0],rpy[1],rpy[2]))
+                
         return
 
     def navdata_callback(self, navdataMsg):
