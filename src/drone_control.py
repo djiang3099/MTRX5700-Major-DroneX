@@ -21,14 +21,13 @@ from sensor_msgs.msg import Imu, Image, CompressedImage
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class DroneController():
-    def __init__(self, kp=0.3, ki=0, kd=0.3):
+    def __init__(self, time, kp=0.07, ki=0, kd=0.05):
         # Track the time the controller is called at and initial time
-        while rospy.get_time() == 0:    # For simulated time
-            self.initTime = rospy.get_time()
-        self.lastTime = 0
+        self.initTime = time
+        self.lastTime = time
 
         # Saturation limit and Gains for controller
-        self.ctrlLimit = 0.2    # Max control output
+        self.ctrlLimit = 0.1    # Max control output
         self.errThresh = 0.05   # Threshold to use hover functionality
         self.kp = kp
         self.ki = ki
@@ -82,7 +81,7 @@ class DroneController():
 
     def compute(self, time):
         command = Twist()
-        dt = self.lastTime - time
+        dt = time - self.lastTime
         self.lastTime = time
 
         # Compute Proportional error
@@ -128,16 +127,16 @@ class DroneController():
             command.angular.z = 0
 
         else:
-            controlX = (self.kp * realX) + (self.kd * d_linXErr) + (self.ki * i_linX)
+            controlX = (self.kp * realX) + (self.kd * d_linXErr) + (self.ki * self.i_linX)
             command.linear.x = np.sign(controlX) * min(self.ctrlLimit, abs(controlX))
 
-            controlY = (self.kp * realY) + (self.kd * d_linYErr) + (self.ki * i_linY)
+            controlY = (self.kp * realY) + (self.kd * d_linYErr) + (self.ki * self.i_linY)
             command.linear.y = np.sign(controlY)* min(self.ctrlLimit, abs(controlY))
             
-            controlZ = (self.kp * linZErr) + (self.kd * d_linZErr) + (self.ki * i_linZ)
+            controlZ = (self.kp * linZErr) + (self.kd * d_linZErr) + (self.ki * self.i_linZ)
             command.linear.z = np.sign(controlZ) * min(self.ctrlLimit, abs(controlZ))
             
-            controlYaw = (self.kp * angZErr) + (self.kd * d_angZErr) + (self.ki * i_angZ)
+            controlYaw = (self.kp * angZErr) + (self.kd * d_angZErr) + (self.ki * self.i_angZ)
             command.angular.z = np.sign(controlYaw) * min(self.ctrlLimit, abs(controlYaw))
 
             command.angular.x = 0
@@ -150,12 +149,13 @@ class DroneX():
     # In the initialisation:
     # - Set up subscribers and publishers
     # - Zero all velocities
-    def __init__(self, controller=None):
+    def __init__(self, time, controller=None):
         print('Initialising a drone...')
         self.odomOffset = None
         self.pos = None
         self.orient = None
         self.battery = 100
+        self.initTime = time
         self.initPos = None
         self.initOrient = None
         self.takeoffFlag = -1
@@ -287,5 +287,11 @@ if __name__ == '__main__':
     print('Drone Control started...')
     rospy.init_node('drone_control')
 
-    DroneController = DroneController()
-    Drone = DroneX(DroneController)
+    # Track the time the controller is called at and initial time
+    initTime = rospy.get_time()
+    while rospy.get_time() == 0:    # For simulated time
+        print( rospy.get_time())
+        initTime = rospy.get_time()
+
+    DroneController = DroneController(initTime)
+    Drone = DroneX(initTime, DroneController)
