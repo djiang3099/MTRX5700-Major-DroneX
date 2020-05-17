@@ -41,33 +41,30 @@ class CvDrone:
         return
 
     def cam_callback(self, image_message):
-        print("Image received")
-        ###### Not working rn, need to install scipy
-        # np_arr = np.fromString(image_message.data, np.uint8)
-        # image_np = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        # cv2.imshow("image_np", image_np)
-
+        print("Image received")        
         # Convert from ROS image to opencv image
+        ###### For non compressed images
         # cv_image = self.bridge.imgmsg_to_cv2(image_message, desired_encoding="bgr8")
         # image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
         
+        ###### For compressed images
         np_arr = np.fromstring(image_message.data, np.uint8)  
         image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
         frame = self.preprocess(image)
 
-        cv2.imshow("Output", image)
-        while (cv2.waitKey(1) != 27):
-            a = 1
+        # cv2.imshow("Output", image)
+        # while (cv2.waitKey(1) != 27):
+        #     a = 1
 
-        self.output = self.get_contours(frame)
+        self.output, targetY, targetZ, targetW, targetH = self.get_contours(frame)
 
-        if first:
+        if self.first:
             size = frame.shape
             self.centreY = size[0]/2
             self.centreX = size[1]/2
 
-        commandDrone(frame)
+        self.commandDrone(targetY, targetZ, targetW, targetH)
 
         return
 
@@ -107,13 +104,16 @@ class CvDrone:
             valid = True
         else:
             valid = False
+        targetY = x + w / 2
+        targetZ = y + h / 2
         
         # print("Valid? {} | No. of Contours: {}".format(valid, len(validCont)))
         concat = cv2.vconcat([contourImage,maskline])
-        return concat
+        return concat, targetY, targetZ, w, h
 
-    def commandDrone(self, targetX, targetY):
+    def commandDrone(self, targetY, targetZ, w, h):
         # Calculate 
+        return
 
 def main():
 
