@@ -23,8 +23,8 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from std_msgs.msg import Int8
 
 class CvDroneController():
-    def __init__(self, time, kp=0.0005, ki=0.0001, kd=0.0005):
-        print("Initialising drone controller...")
+    def __init__(self, time, kp=0.0005, ki=0.00005, kd=0.0003):
+        print("Initialising drone controller...", time)
         # Track the time the controller is called at and initial time
         self.lastTime = time
 
@@ -55,7 +55,7 @@ class CvDroneController():
         self.i_angZ = 0
 
         # Integral controller saturation
-        self.intSat = 100
+        self.intSat = 300
 
         # Default target settings
         self.centreZ = 240
@@ -90,6 +90,7 @@ class CvDroneController():
     def compute(self, time, y, z, w, h):
         command = Twist()
         dt = time - self.lastTime
+        print("dt", dt)
         self.lastTime = time
 
         # Compute Proportional error
@@ -113,12 +114,16 @@ class CvDroneController():
         # Compute Integral error with saturation
         # self.i_linX = np.sign(self.i_linX + realX*dt) * min(self.intSat, \
         #     abs(self.i_linX + realX*dt))
-        self.i_linY = np.sign(self.i_linY + linYErr*dt) * min(self.intSat, \
-            abs(self.i_linY + linYErr*dt))
-        self.i_linZ = np.sign(self.i_linZ + linZErr*dt) * min(self.intSat, \
-            abs(self.i_linZ + linZErr*dt))
-        # self.i_angZ = np.sign(self.i_angZ + angZErr*dt) * min(self.intSat, \
-        #     abs(self.i_angZ + angZErr*dt))
+        print("Integral ", self.i_linY + linYErr*dt, self.i_linZ + linZErr*dt)
+        if abs(dt) < 50:
+            # self.i_linY = self.i_linY + linYErr*dt
+            # self.i_linZ  =self.i_linZ + linZErr*dt
+            self.i_linY = np.sign(self.i_linY + linYErr*dt) * min(self.intSat, \
+                abs(self.i_linY + linYErr*dt))
+            self.i_linZ = np.sign(self.i_linZ + linZErr*dt) * min(self.intSat, \
+                abs(self.i_linZ + linZErr*dt))
+            # self.i_angZ = np.sign(self.i_angZ + angZErr*dt) * min(self.intSat, \
+            #     abs(self.i_angZ + angZErr*dt))
 
         # If very close to the goal, hover
         if abs(linXErr) < self.errThresh and abs(linYErr) < self.errThresh and \
@@ -148,12 +153,14 @@ class CvDroneController():
             command.angular.y = 0.0
             command.linear.x = 0.0
             command.angular.z = 0.0
-            print("PD Y:   P{}, D{}".format((self.kp_zy * linYErr), (self.kd_zy * d_linYErr)))
-            print("PD Z:   P{}, D{}".format((self.kp_zy * linZErr), (self.kd_zy * d_linZErr)))
+            print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linYErr), \
+                (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
+            print("PID Z:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linZErr), \
+                (self.ki_zy * self.i_linZ), (self.kd_zy * d_linZErr)))
             
 
-        print("Error:   {}, {}, {}".format(linXErr, linYErr, linZErr))
-        print("Command: {:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2}".format(command.linear.x,\
+        print("Error:   {}, {}, {}, Size: {}, {}".format(linXErr, linYErr, linZErr, w, h))
+        print("Command: {:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2}\n".format(command.linear.x,\
             command.linear.y, command.linear.z, command.angular.x ,command.angular.y,\
                 command.angular.z))
         return command
@@ -281,10 +288,12 @@ class CvDrone:
         cv2.waitKey(1)
 
         if self.first:
-            size = frame.shape
+            size = frame.shape      
             self.PID.set_centre(size[1]/2, size[0]/2)
             self.PID.set_target_size(size[1]/10, size[0]/5)
-        
+            print("Frame size: {}, {}".format(size[1], size[0])) # 640 wide, 360 high
+            self.first = 0
+
         if not self.targetFound:
             print("----------------------- Target lost")
             command = self.PID.hover()
