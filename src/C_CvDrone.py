@@ -28,7 +28,11 @@ from C_CvDroneController import CvDroneController
 
 NECK = 1
 RSH = 2
+RELB = 3
+RRST = 4
 LSH = 5
+LELB = 6
+LRST = 7
 MHIP = 8
 RHIP = 9
 LHIP = 12
@@ -131,6 +135,14 @@ class CvDrone:
             self.pos = odomMsg.pose.pose.position
 
             self.zeroOdomPub.publish(odomMsg)   
+
+            # Check if the video stream is lagging, hover if so
+            if rospy.get_time() - self.lastImgTime > 0.5:   # 2 FPS
+                print("---------------------------------- Video stream lagging!")
+                self.command = self.PID.hover()
+            
+            self.commandDrone(self.command)
+               
             
         else:   # Waiting for takeoff, just publish status
             pos = copy.copy(odomMsg.pose.pose.position)
@@ -165,11 +177,6 @@ class CvDrone:
         # print("size", self.box_x2 - self.box_x1, self.box_y2 - self.box_y1)
         cv2.imshow("Output", image)
 
-        targetY = self.box_x1
-        targetZ = self.box_y1
-        targetW = self.box_x2 - self.box_x1
-        targetH = self.box_y2 - self.box_y1
-
         cv2.waitKey(1)
 
         if self.first:
@@ -181,22 +188,18 @@ class CvDrone:
 
         # if not self.targetFound:
         #     print("----------------------- Target lost")
-        #     command = self.PID.hover()
+        #     self.command = self.PID.hover()
         # else:
         #     time = rospy.get_time() - self.initTime
-        #     command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
+        #     self.command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
 
-        if self.missingBodyParts:
-            command = self.PID.hover()
-        else:
-            time = rospy.get_time() - self.initTime
-            command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
+        
 
         # print("##############missing body parts?", self.missingBodyParts)
 
-        if self.takeoffFlag == 1:
-            # command = self.PID.hover()
-            self.commandPub.publish(command)
+        # if self.takeoffFlag == 1:
+        #     # command = self.PID.hover()
+        #     self.commandDrone(command)
 
         return
 
@@ -217,13 +220,8 @@ class CvDrone:
 
     def openpose_callback(self, openposeMsg):
         # print ("Openpose msg received! no. of humans in frame: ", openposeMsg.num_humans)
-        # print("body :", openposeMsg.human_list[0].body_bounding_box.x , openposeMsg.human_list[0].body_bounding_box.y)
-        # print("face :", openposeMsg.human_list[0].face_bounding_box.x, openposeMsg.human_list[0].face_bounding_box.y)
-        # self.box_x1 = int(openposeMsg.human_list[0].body_bounding_box.x)
-        # self.box_x2 = int(openposeMsg.human_list[0].body_bounding_box.x + openposeMsg.human_list[0].body_bounding_box.width)
-        # self.box_y1 = int(openposeMsg.human_list[0].body_bounding_box.y)
-        # self.box_y2 = int(openposeMsg.human_list[0].body_bounding_box.y + openposeMsg.human_list[0].body_bounding_box.height)
         maxHeight = 0
+        self.lastImgTime = rospy.get_time()
         self.missingBodyParts = True
 
         if openposeMsg.human_list:
@@ -251,17 +249,14 @@ class CvDrone:
                         
         if self.missingBodyParts:
             print("MISSING BODY PARTS")
-            
-        # print("height", maxHeight)
-
-        # print ("x1, y1, x2, y2", x1, y1, x2, y2)
-        # print("output size", self.output.shape)
-        # print("type ", type(self.output))
-        # self.image =  np.ascontiguousarray(self.output, dtype=np.uint8)
-        # cv2.rectangle(self.image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 1)
-        # cv2.imshow("Output", self.output)
-        # cv2.waitKey(1)
-
+            self.command = self.PID.hover()
+        else:
+            targetY = self.box_x1
+            targetZ = self.box_y1
+            targetW = self.box_x2 - self.box_x1
+            targetH = self.box_y2 - self.box_y1
+            time = rospy.get_time() - self.initTime
+            self.command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
 
 
     def preprocess(self, image):
@@ -314,48 +309,6 @@ class CvDrone:
         concat = cv2.vconcat([contourImage,maskline])
         return concat, targetY, targetZ, w, h
 
-    def commandDrone(self, targetY, targetZ, w, h):
-        # Calculate offset from the target
-        offsetY = self.centreY - targetY
-        offsetZ = self.centreZ - targetZ
-
-        velY = offsetY * 0.0005
-        velZ = offsetZ * 0.0005
-
-        if ( (abs(w-self.refWidth) > 10 ) and   (abs (h-self.refHeight) > 10 ) ):
-            velX = (self.refHeight - h) * 0.005
-        else:
-            velX = 0.0
-
-        # Print statements, for debugging
-        if velY > 0:
-            a = "Left "
-        else:
-            a = "Right"
-        if velZ > 0:
-            b = "Up  "
-        else:
-            b = "Down"
-        if velX > 0:
-            c = "Forward"
-        else:
-            c = "Back   "
-
-        print("{}, {:.2}, {}, {:.2}, {}, {:.2}".format(a, velY, b, velZ, c, velX))
-
-
-        command = Twist()
-        command.linear.x = np.sign(velX) * min(self.ctrlLimit, abs(velX))
-        command.linear.y = np.sign(velY) * min(self.ctrlLimit, abs(velY))
-        command.linear.z = np.sign(velZ) * min(self.ctrlLimit, abs(velZ))
-        command.angular.x = 0
-        command.angular.y = 0
-        command.angular.z = 0
-        print(command)
-
-        # self.commandPub.publish(command)
-
-
-
-
+    def commandDrone(self, command):
+        self.commandPub.publish(command)
         return
