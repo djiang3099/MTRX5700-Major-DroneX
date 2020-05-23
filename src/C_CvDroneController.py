@@ -90,30 +90,31 @@ class CvDroneController():
     def compute(self, time, y, z, w, h):
         command = Twist()
         dt = time - self.lastTime
-        print("dt", dt)
+        print("dt", dt,  h/self.refHeight)
         self.lastTime = time
 
+
         # Compute Proportional error
-        linXErr = 0.0
+        linXErr = (1 - float(h)/self.refHeight)*100
         linYErr = self.centreY - y
         linZErr = self.centreZ - z
         # angZErr = self.goalYaw - self.yaw
 
         # Compute Derivative error
-        # d_linXErr = (realX - self.prevErrorX)/dt
+        d_linXErr = (linXErr - self.prevErrorX)/dt
         d_linYErr = (linYErr - self.prevErrorY)/dt
         d_linZErr = (linZErr - self.prevErrorZ)/dt
         # d_angZErr = (angZErr - self.prevErrorYaw)/dt
 
         # Update previous error
-        # self.prevErrorX = linXErr
+        self.prevErrorX = linXErr
         self.prevErrorY = linYErr
         self.prevErrorZ = linZErr
         # self.prevErrorYaw = angZErr
 
         # Compute Integral error with saturation
-        # self.i_linX = np.sign(self.i_linX + realX*dt) * min(self.intSat, \
-        #     abs(self.i_linX + realX*dt))
+        self.i_linX = np.sign(self.i_linX + linXErr*dt) * min(self.intSat, \
+            abs(self.i_linX + linXErr*dt))
         print("Integral ", self.i_linY + linYErr*dt, self.i_linZ + linZErr*dt)
         if abs(dt) < 50:
             # self.i_linY = self.i_linY + linYErr*dt
@@ -137,8 +138,8 @@ class CvDroneController():
             print("----------------------- Hovering!!!")
 
         else:
-            # controlX = (self.kp * linXErr) + (self.kd * d_linXErr) + (self.ki * self.i_linX)
-            # command.linear.x = np.sign(controlX) * min(self.ctrlLimit, abs(controlX))
+            controlX = (self.kp_zy * linXErr) + (self.kd_zy * d_linXErr) + (self.ki_zy * self.i_linX)
+            command.linear.x = np.sign(controlX) * min(self.ctrlLimit, abs(controlX))
 
             controlY = (self.kp_zy * linYErr) + (self.kd_zy * d_linYErr) + (self.ki_zy * self.i_linY)
             command.linear.y = np.sign(controlY)* min(self.ctrlLimit, abs(controlY))
@@ -151,8 +152,9 @@ class CvDroneController():
 
             command.angular.x = 0.0
             command.angular.y = 0.0
-            command.linear.x = 0.0
             command.angular.z = 0.0
+            print("PID X:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linXErr), \
+                (self.ki_zy * self.i_linX), (self.kd_zy * d_linXErr)))
             print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linYErr), \
                 (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
             print("PID Z:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linZErr), \

@@ -174,8 +174,8 @@ class CvDrone:
 
         if self.first:
             size = frame.shape      
-            self.PID.set_centre(320, 200)
-            self.PID.set_target_size(size[1]/7, size[0]*0.6)
+            self.PID.set_centre(320, 180)
+            self.PID.set_target_size(130, 200)
             print("Frame size: {}, {}".format(size[1], size[0])) # 640 wide, 360 high
             self.first = 0
 
@@ -224,6 +224,8 @@ class CvDrone:
         # self.box_y1 = int(openposeMsg.human_list[0].body_bounding_box.y)
         # self.box_y2 = int(openposeMsg.human_list[0].body_bounding_box.y + openposeMsg.human_list[0].body_bounding_box.height)
         maxHeight = 0
+        self.missingBodyParts = True
+
         if openposeMsg.human_list:
             for person in openposeMsg.human_list:
                 opNeck = person.body_key_points_with_prob[NECK]
@@ -246,9 +248,9 @@ class CvDrone:
                         self.box_y1 = person_y1
                         self.box_y2 = person_y2
                         self.missingBodyParts = False
-                else:
-                    print("MISSING BODY PARTS")
-                    self.missingBodyParts = True
+                        
+        if self.missingBodyParts:
+            print("MISSING BODY PARTS")
             
         # print("height", maxHeight)
 
