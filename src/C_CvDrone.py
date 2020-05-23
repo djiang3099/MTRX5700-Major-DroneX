@@ -26,6 +26,13 @@ from openpose_ros_msgs.msg import OpenPoseHumanList
 
 from C_CvDroneController import CvDroneController
 
+NECK = 1
+RSH = 2
+LSH = 5
+MHIP = 8
+RHIP = 9
+LHIP = 12
+
 class CvDrone:
     def __init__(self, time, controller=None):
         print("Initialised CV Drone")
@@ -66,6 +73,14 @@ class CvDrone:
 
 
         self.output = np.array([360,640,3])
+
+
+        self.box_x1 = 0
+        self.box_x2 = 0
+        self.box_y1 = 0
+        self.box_y2 = 0
+
+        self.missingBodyParts = True
 
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
@@ -144,25 +159,40 @@ class CvDrone:
 
         frame = self.preprocess(image)
 
-        self.output, targetY, targetZ, targetW, targetH = self.get_contours(frame)
+        # self.output, targetY, targetZ, targetW, targetH = self.get_contours(frame)
+        # self.output, _, _, _, _ = self.get_contours(frame)
+        cv2.rectangle(image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 1)
+        # print("size", self.box_x2 - self.box_x1, self.box_y2 - self.box_y1)
+        cv2.imshow("Output", image)
 
-        cv2.imshow("Output", self.output)
+        targetY = self.box_x1
+        targetZ = self.box_y1
+        targetW = self.box_x2 - self.box_x1
+        targetH = self.box_y2 - self.box_y1
 
         cv2.waitKey(1)
 
         if self.first:
             size = frame.shape      
-            self.PID.set_centre(size[1]/2, size[0]/2)
-            self.PID.set_target_size(size[1]/10, size[0]/5)
+            self.PID.set_centre(320, 200)
+            self.PID.set_target_size(size[1]/7, size[0]*0.6)
             print("Frame size: {}, {}".format(size[1], size[0])) # 640 wide, 360 high
             self.first = 0
 
-        if not self.targetFound:
-            print("----------------------- Target lost")
+        # if not self.targetFound:
+        #     print("----------------------- Target lost")
+        #     command = self.PID.hover()
+        # else:
+        #     time = rospy.get_time() - self.initTime
+        #     command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
+
+        if self.missingBodyParts:
             command = self.PID.hover()
         else:
             time = rospy.get_time() - self.initTime
             command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
+
+        # print("##############missing body parts?", self.missingBodyParts)
 
         if self.takeoffFlag == 1:
             # command = self.PID.hover()
@@ -189,15 +219,44 @@ class CvDrone:
         # print ("Openpose msg received! no. of humans in frame: ", openposeMsg.num_humans)
         # print("body :", openposeMsg.human_list[0].body_bounding_box.x , openposeMsg.human_list[0].body_bounding_box.y)
         # print("face :", openposeMsg.human_list[0].face_bounding_box.x, openposeMsg.human_list[0].face_bounding_box.y)
-        x1 = int(openposeMsg.human_list[0].body_bounding_box.x)
-        x2 = int(openposeMsg.human_list[0].body_bounding_box.x + openposeMsg.human_list[0].body_bounding_box.width)
-        y1 = int(openposeMsg.human_list[0].body_bounding_box.y)
-        y2 = int(openposeMsg.human_list[0].body_bounding_box.y + openposeMsg.human_list[0].body_bounding_box.height)
+        # self.box_x1 = int(openposeMsg.human_list[0].body_bounding_box.x)
+        # self.box_x2 = int(openposeMsg.human_list[0].body_bounding_box.x + openposeMsg.human_list[0].body_bounding_box.width)
+        # self.box_y1 = int(openposeMsg.human_list[0].body_bounding_box.y)
+        # self.box_y2 = int(openposeMsg.human_list[0].body_bounding_box.y + openposeMsg.human_list[0].body_bounding_box.height)
+        maxHeight = 0
+        if openposeMsg.human_list:
+            for person in openposeMsg.human_list:
+                opNeck = person.body_key_points_with_prob[NECK]
+                opRSh = person.body_key_points_with_prob[RSH]
+                opLSh = person.body_key_points_with_prob[LSH]
+                opMHip = person.body_key_points_with_prob[MHIP]
+                opRHip = person.body_key_points_with_prob[RHIP]
+                opLHip = person.body_key_points_with_prob[LHIP]
+                person_x1 = int(min(opRSh.x, opRHip.x))
+                person_x2 = int(max(opLSh.x, opLHip.x))
+                person_y1 = int(min(opNeck.y, opRSh.y, opLSh.y))
+                person_y2 = int(max(opMHip.y, opRHip.y, opLHip.y))
+                personHeight = person_y2 - person_y1
+
+                if  opRSh.x != 0 and opLSh.x != 0 and opRHip != 0 and opRHip != 0 :
+                    if personHeight > maxHeight:
+                        maxHeight = personHeight
+                        self.box_x1 = person_x1
+                        self.box_x2 = person_x2
+                        self.box_y1 = person_y1
+                        self.box_y2 = person_y2
+                        self.missingBodyParts = False
+                else:
+                    print("MISSING BODY PARTS")
+                    self.missingBodyParts = True
+            
+        # print("height", maxHeight)
+
         # print ("x1, y1, x2, y2", x1, y1, x2, y2)
         # print("output size", self.output.shape)
         # print("type ", type(self.output))
         # self.image =  np.ascontiguousarray(self.output, dtype=np.uint8)
-        # cv2.rectangle(self.image,(x1, y1), (x2, y2), (255, 0, 0), 1)
+        # cv2.rectangle(self.image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 1)
         # cv2.imshow("Output", self.output)
         # cv2.waitKey(1)
 
