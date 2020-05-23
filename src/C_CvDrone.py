@@ -23,7 +23,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from std_msgs.msg import Int8
 from openpose_ros_msgs.msg import OpenPoseHumanList
 
-
+from get_gradient import get_grad
 from C_CvDroneController import CvDroneController
 
 NECK = 1
@@ -223,6 +223,7 @@ class CvDrone:
         maxHeight = 0
         self.lastImgTime = rospy.get_time()
         self.missingBodyParts = True
+        mainPerson = None       # To store the main person in the frame
 
         if openposeMsg.human_list:
             for person in openposeMsg.human_list:
@@ -238,15 +239,18 @@ class CvDrone:
                 person_y2 = int(max(opMHip.y, opRHip.y, opLHip.y))
                 personHeight = person_y2 - person_y1
 
+                # Check that all the key joints exist
                 if  opRSh.x != 0 and opLSh.x != 0 and opRHip != 0 and opRHip != 0 :
                     if personHeight > maxHeight:
+                        mainPerson = person
                         maxHeight = personHeight
                         self.box_x1 = person_x1
                         self.box_x2 = person_x2
                         self.box_y1 = person_y1
                         self.box_y2 = person_y2
                         self.missingBodyParts = False
-                        
+
+        # Control the drone towards the desired position 
         if self.missingBodyParts:
             print("MISSING BODY PARTS")
             self.command = self.PID.hover()
@@ -258,6 +262,62 @@ class CvDrone:
             time = rospy.get_time() - self.initTime
             self.command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
 
+            # Left hand points
+            lSh = person.body_key_points_with_prob[LSH]
+            lSh = Point(lSh.x, lSh.y, 0)
+            lElb = person.body_key_points_with_prob[LELB]
+            lElb = Point(lElb.x, lElb.y, 0)
+            lRst = person.body_key_points_with_prob[LRST]
+            lRst = Point(lRst.x, lRst.y, 0)
+            leftOut = 0
+            
+            # Right hand points
+            rSh = person.body_key_points_with_prob[RSH]
+            rSh = Point(rSh.x, rSh.y, 0)
+            rElb = person.body_key_points_with_prob[RELB]
+            rElb = Point(rElb.x, rElb.y, 0)
+            rRst = person.body_key_points_with_prob[RRST]
+            rRst = Point(rRst.x, rRst.y, 0)
+            rightOut = 0
+
+            # Check for any gestures
+            # Left hand outstretched? Segments in line and not stacked
+            if lSh.x and lElb.x and lRst.x != 0:
+                if abs( get_grad(lSh, lElb) - get_grad(lSh, lRst) ) < 0.2:
+                    if lSh.x < lElb.x < lRst.x:
+                        leftOut = 1
+                        print("Left shift Gesture!!")
+                        y, z = self.PID.get_centre()
+                        self.PID.set_centre(y-5, z)
+                    elif abs(lSh.x - lRst.x) < 20:
+                        leftOut = 2
+                        print("Un-hover left")
+                else: 
+                    leftOut = 0
+
+            # Right hand outstretched?   
+            if rSh.x and rElb.x and rRst.x != 0:
+                if abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ) < 0.2:
+                    if lSh.x < lElb.x < lRst.x:
+                        rightOut = 1
+                        print("Right shift Gesture!!")
+                        y, z = self.PID.get_centre()
+                        self.PID.set_centre(y+5, z)
+                    elif abs(lSh.x - lRst.x) < 20:
+                        rightOut = 2
+                        print("Un-hover right")
+                else: 
+                    rightOut = 0
+
+            # Both hands outstreched
+            if rightOut == 1 and leftOut == 1:
+                print("Hover Gesture!!")
+                self.command = self.PID.hover()
+                self.commandDrone(self.command)
+            elif rightOut == 2 and leftOut == 2:
+                print("Unhover Gesture!!")
+
+            
 
     def preprocess(self, image):
         frame = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)

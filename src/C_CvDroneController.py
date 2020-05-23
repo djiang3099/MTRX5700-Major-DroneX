@@ -66,11 +66,24 @@ class CvDroneController():
         return
 
     def set_centre(self, centreY, centreZ):
+        if centreY > 560:
+            centreY = 560
+        elif centreY < 80:
+            centreY = 80
+        
+        if centreZ > 300:
+            centreZ = 300
+        elif centreZ < 60:
+            centreZ = 60
+
         self.centreZ = centreZ
         self.centreY = centreY
         return
 
-    def set_target_size(self, h, w):
+    def get_centre(self):
+        return self.centreY, self.centreZ
+
+    def set_target_size(self, w, h):
         self.refHeight = h
         self.refWidth = w
         return
