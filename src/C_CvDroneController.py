@@ -70,7 +70,7 @@ class CvDroneController():
         self.centreY = centreY
         return
 
-    def set_target_size(self, h, w):
+    def set_target_size(self, w, h):
         self.refHeight = h
         self.refWidth = w
         return

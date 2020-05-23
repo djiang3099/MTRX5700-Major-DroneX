@@ -173,8 +173,16 @@ class CvDrone:
 
         # self.output, targetY, targetZ, targetW, targetH = self.get_contours(frame)
         # self.output, _, _, _, _ = self.get_contours(frame)
-        cv2.rectangle(image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 1)
+        cv2.rectangle(image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 2)
         # print("size", self.box_x2 - self.box_x1, self.box_y2 - self.box_y1)
+        # Makr the drone goal and centre of the rectangle
+        cv2.circle(image, (self.PID.centreY,self.PID.centreZ), 10, (0,0,255), -1)
+        cv2.rectangle(image,( self.PID.centreY - self.PID.refWidth/2 , self.PID.centreZ - self.PID.refHeight/2 ), \
+                            ( self.PID.centreY + self.PID.refWidth/2 , self.PID.centreZ + self.PID.refHeight/2 ), (0, 0, 255), 1)
+
+        
+        cv2.circle(image, ( (self.box_x1 + self.box_x2)/2  , (self.box_y1 + self.box_y2)/2  ), 3, (0,255,0), 2)
+
         cv2.imshow("Output", image)
 
         cv2.waitKey(1)
@@ -183,6 +191,7 @@ class CvDrone:
             size = frame.shape      
             self.PID.set_centre(320, 180)
             self.PID.set_target_size(130, 200)
+            # was 130 height
             print("Frame size: {}, {}".format(size[1], size[0])) # 640 wide, 360 high
             self.first = 0
 
