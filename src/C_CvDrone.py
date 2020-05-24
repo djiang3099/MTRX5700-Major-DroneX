@@ -86,6 +86,7 @@ class CvDrone:
         self.box_y2 = 0
 
         self.missingBodyParts = True
+        self.hovering = False
 
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
@@ -142,6 +143,9 @@ class CvDrone:
             # Check if the video stream is lagging, hover if so
             if rospy.get_time() - self.lastImgTime > 0.5:   # 2 FPS
                 print("---------------------------------- Video stream lagging!")
+                self.command = self.PID.hover()
+
+            if self.hovering:
                 self.command = self.PID.hover()
             
             self.publishCommand(self.command)
@@ -266,6 +270,9 @@ class CvDrone:
         if self.missingBodyParts:
             print("MISSING BODY PARTS")
             self.command = self.PID.hover()
+        elif abs( self.box_x2 - self.box_x1 ) > abs( self.box_y2 - self.box_y1 ):
+            print("Aspect Ratio")
+            self.command = self.PID.hover()
         else:
             targetY = self.box_x1
             targetZ = self.box_y1
@@ -304,12 +311,10 @@ class CvDrone:
             # Left hand outstretched? Segments in line and not stacked
             if lSh.x and lElb.x and lRst.x != 0:
                 if abs( get_grad(lSh, lElb) - get_grad(lSh, lRst) ) < 0.3 and \
-                    abs(get_grad(lSh, lRst)) < 0.45:
+                    abs(get_grad(lSh, lRst)) < 0.6:
                     if lSh.x < lElb.x < lRst.x and (lRst.x - lSh.x) > rlShiftThr:
                         leftOut = 1
-                        print("Left shift Gesture!!")
-                        y, z = self.PID.get_centre()
-                        self.PID.set_centre(y+5, z)
+                        print("shift left")
                 if (abs(lSh.x - lRst.x) < unhoverThr)  and ( lSh.y - lRst.y > unhoverUDThr ) and \
                     (lElb.x - lSh.x > unhoverLRThr) and (lElb.x - lRst.x > unhoverLRThr):
                     leftOut = 2
@@ -322,16 +327,12 @@ class CvDrone:
             # Right hand outstretched?   
             if rSh.x and rElb.x and rRst.x != 0:
                 # print(abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ), "< 0.3??  ",  abs(get_grad(rSh, rRst)), "< 0.6?")
-
                 if abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ) < 0.3 and \
                     abs( get_grad(rSh, rRst) ) < 0.6:
                     # print (rSh.x, rElb.x, rRst.x, "< < <     ", (rRst.x - rSh.x), "<", rlShiftThr)
-
                     if rSh.x > rElb.x > rRst.x and (rSh.x - rRst.x) > rlShiftThr:
                         rightOut = 1
-                        print("Right shift Gesture!!")
-                        y, z = self.PID.get_centre()
-                        self.PID.set_centre(y-5, z)
+                        print("shift right")
             
                 if (abs(rSh.x - rRst.x) < unhoverThr) and ( rSh.y - rRst.y > unhoverUDThr ) and \
                     (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
@@ -347,8 +348,17 @@ class CvDrone:
                 print("Hover Gesture!!")
                 self.command = self.PID.hover()
                 self.publishCommand(self.command)
+                self.hovering = True;
             elif rightOut == 2 and leftOut == 2:
                 print("Unhover Gesture!!")
+            elif rightOut == 1:
+                print("Right shift Gesture!!")
+                y, z = self.PID.get_centre()
+                self.PID.set_centre(y-5, z)
+            elif leftOut == 1:
+                print("Left shift Gesture!!")
+                y, z = self.PID.get_centre()
+                self.PID.set_centre(y+5, z)
             
             # Landing
             if leftLand == 1 and rightLand == 1:
