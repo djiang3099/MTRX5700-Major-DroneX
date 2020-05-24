@@ -351,11 +351,12 @@ class CvDrone:
                 self.hovering = True;
             elif rightOut == 2 and leftOut == 2:
                 print("Unhover Gesture!!")
-            elif rightOut == 1:
+                self.hovering = False;
+            elif rightOut == 1 and not self.hovering:
                 print("Right shift Gesture!!")
                 y, z = self.PID.get_centre()
                 self.PID.set_centre(y-5, z)
-            elif leftOut == 1:
+            elif leftOut == 1 and not self.hovering:
                 print("Left shift Gesture!!")
                 y, z = self.PID.get_centre()
                 self.PID.set_centre(y+5, z)
