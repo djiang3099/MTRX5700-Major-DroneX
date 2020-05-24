@@ -170,7 +170,7 @@ class CvDroneController():
             command.linear.z = np.sign(controlZ) * min(self.ctrlLimit, abs(controlZ))
             
             controlYaw = (self.kp_ang * angZErr) + (self.kd_ang * d_angZErr) + (self.ki_ang * self.i_angZ)
-            command.angular.z = np.sign(controlYaw) * min(self.ctrlLimit, abs(controlYaw))
+            command.angular.z = np.sign(controlYaw) * min(self.yawLimit, abs(controlYaw))
 
             command.angular.x = 0.0
             command.angular.y = 0.0
@@ -187,4 +187,96 @@ class CvDroneController():
         # print("Command: {:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2}\n".format(command.linear.x,\
         #     command.linear.y, command.linear.z, command.angular.x ,command.angular.y,\
         #         command.angular.z))
+        return command
+
+    # Setter for current drone pose
+    # Takes a geometry_msgs.msg.pose.pose type as input.
+    def set_pose(self, pose):
+        self.x = pose.position.x
+        self.y = pose.position.y
+        self.z = pose.position.z
+        quat = pose.orientation
+        self.roll, self.pitch, self.yaw = \
+            euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
+        return
+        
+    # Takes a geometry_msgs.msg.pose.pose type as input.
+    def set_goal(self, pose):
+        self.goalX = pose.position.x
+        self.goalY = pose.position.y
+        self.goalZ = pose.position.z
+        quat = pose.orientation
+        self.goalRoll, self.goalPitch, self.goalYaw = \
+            euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
+        return
+
+    def compute_absolute(self, time, pose=None, goal=None):
+        if pose is not None:
+            self.set_pose(pose)
+        if goal is not None:
+            self.set_goal(goal)
+
+        command = Twist()
+        dt = time - self.lastTime
+        self.lastTime = time
+
+        # Compute Proportional error
+        linXErr = self.goalX - self.x
+        linYErr = self.goalY - self.y
+        linZErr = self.goalZ - self.z
+        angZErr = self.goalYaw - self.yaw
+
+        # Transform the error into the 'world' frame
+        realX = linXErr*np.cos(-self.yaw) - linYErr*np.sin(-self.yaw)
+        realY = linXErr*np.sin(-self.yaw) + linYErr*np.cos(-self.yaw)
+
+        # Compute Derivative error
+        d_linXErr = (realX - self.prevErrorX)/dt
+        d_linYErr = (realY - self.prevErrorY)/dt
+        d_linZErr = (linZErr - self.prevErrorZ)/dt
+        d_angZErr = (angZErr - self.prevErrorYaw)/dt
+
+        # Update previous error
+        self.prevErrorX = realX
+        self.prevErrorY = realY
+        self.prevErrorZ = linZErr
+        self.prevErrorYaw = angZErr
+
+        # Compute Integral error with saturation
+        self.i_linX = np.sign(self.i_linX + realX*dt) * min(self.intSat, \
+            abs(self.i_linX + realX*dt))
+        self.i_linY = np.sign(self.i_linY + realY*dt) * min(self.intSat, \
+            abs(self.i_linY + realY*dt))
+        self.i_linZ = np.sign(self.i_linZ + linZErr*dt) * min(self.intSat, \
+            abs(self.i_linZ + linZErr*dt))
+        self.i_angZ = np.sign(self.i_angZ + angZErr*dt) * min(self.intSat, \
+            abs(self.i_angZ + angZErr*dt))
+
+        # If very close to the goal, hover
+        if abs(linXErr) < 20 and abs(linYErr) < 20 and \
+            abs(linZErr) < 10 and abs(angZErr) < 0.35:
+            command.linear.x = 0.0
+            command.linear.y = 0.0
+            command.linear.z = 0.0
+            command.angular.x = 0.0
+            command.angular.y = 0.0
+            command.angular.z = 0.0
+
+        else:
+            controlX = (self.kp_zy * realX) + (self.kd_zy * d_linXErr) + (self.ki_zy * self.i_linX)
+            command.linear.x = np.sign(controlX) * min(self.ctrlLimit, abs(controlX))
+
+            controlY = (self.kp_zy * realY) + (self.kd_zy * d_linYErr) + (self.ki_zy * self.i_linY)
+            command.linear.y = np.sign(controlY)* min(self.ctrlLimit, abs(controlY))
+            
+            controlZ = (self.kp_zy * linZErr) + (self.kd_zy * d_linZErr) + (self.ki_zy * self.i_linZ)
+            command.linear.z = np.sign(controlZ) * min(self.ctrlLimit, abs(controlZ))
+            
+            controlYaw = (self.kp_ang * angZErr) + (self.kd_ang * d_angZErr) + (self.ki_ang * self.i_angZ)
+            command.angular.z = np.sign(controlYaw) * min(self.yawLimit, abs(controlYaw))
+
+            command.angular.x = 0.0
+            command.angular.y = 0.0
+
+        print(command)
         return command

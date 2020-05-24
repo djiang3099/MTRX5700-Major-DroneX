@@ -87,7 +87,7 @@ class CvDrone:
         self.box_y1 = 0
         self.box_y2 = 0
 
-        self.switch_camera()
+        self.switch_camera(0)
 
         self.missingBodyParts = True
 
@@ -357,14 +357,19 @@ class CvDrone:
             # Landing
             if leftLand == 1 and rightLand == 1:
                 print("LAND")
+                # self.goalController.compute_goal()
                 self.landingPub.publish(Empty())
 
 
-    def switch_camera(self):
+    def switch_camera(self, num):    
         rospy.wait_for_service('CamSelect')
         try:
+            if num == 1:
+                print("------------------------------------ Switching to BACK camera!")
+            elif num == 0:
+                print("------------------------------------ Switching to FRONT camera!")
             CamSelect = rospy.ServiceProxy('CamSelect', CamSelect)
-            resp1 = CamSelect(1)
+            resp1 = CamSelect(num)
             return resp1.result
         except rospy.ServiceException as e:
             print("Service call failed: %s"%e)
