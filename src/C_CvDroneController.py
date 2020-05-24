@@ -30,7 +30,8 @@ class CvDroneController():
 
         # Actuation limit
         self.ctrlLimit = 0.1    # Max control output
-        self.errThresh = 0.05   # Threshold to use hover functionality
+        self.yawLimit = 0.3     # Max yaw rate
+        self.errThresh = 0.1   # Threshold to use hover functionality
         
         # Gains for drone moving up/down/left/right
         self.kp_zy = kp
@@ -38,9 +39,14 @@ class CvDroneController():
         self.kd_zy = kd
 
         # Gains for in and out of the frame
-        self.kp_x = kp*10
-        self.ki_x = ki*10
-        self.kd_x = kd*10
+        self.kp_x = kp*100
+        self.ki_x = ki*100
+        self.kd_x = kd*100
+
+        # Gains for drone yaw
+        self.kp_ang = kp*100
+        self.ki_ang = ki*100
+        self.kd_ang = kd*100
 
         # Store previous error for derivative control
         self.prevErrorX = 0
@@ -62,10 +68,12 @@ class CvDroneController():
         self.centreY = 300
         self.refHeight = 14
         self.refWidth = 10
+        self.goalYaw = 0
 
         return
 
     def set_centre(self, centreY, centreZ):
+        # Limit the centre to be within a margin
         if centreY > 560:
             centreY = 560
         elif centreY < 80:
@@ -108,22 +116,22 @@ class CvDroneController():
 
 
         # Compute Proportional error
-        linXErr = (1 - float(h)/self.refHeight)*100
+        linXErr = (1 - float(h)/self.refHeight)
         linYErr = self.centreY - y
         linZErr = self.centreZ - z
-        # angZErr = self.goalYaw - self.yaw
+        angZErr = self.goalYaw - self.yaw
 
         # Compute Derivative error
         d_linXErr = (linXErr - self.prevErrorX)/dt
         d_linYErr = (linYErr - self.prevErrorY)/dt
         d_linZErr = (linZErr - self.prevErrorZ)/dt
-        # d_angZErr = (angZErr - self.prevErrorYaw)/dt
+        d_angZErr = (angZErr - self.prevErrorYaw)/dt
 
         # Update previous error
         self.prevErrorX = linXErr
         self.prevErrorY = linYErr
         self.prevErrorZ = linZErr
-        # self.prevErrorYaw = angZErr
+        self.prevErrorYaw = angZErr
 
         # Compute Integral error with saturation
         self.i_linX = np.sign(self.i_linX + linXErr*dt) * min(self.intSat, \
@@ -136,12 +144,12 @@ class CvDroneController():
                 abs(self.i_linY + linYErr*dt))
             self.i_linZ = np.sign(self.i_linZ + linZErr*dt) * min(self.intSat, \
                 abs(self.i_linZ + linZErr*dt))
-            # self.i_angZ = np.sign(self.i_angZ + angZErr*dt) * min(self.intSat, \
-            #     abs(self.i_angZ + angZErr*dt))
+            self.i_angZ = np.sign(self.i_angZ + angZErr*dt) * min(self.intSat, \
+                abs(self.i_angZ + angZErr*dt))
 
         # If very close to the goal, hover
-        if abs(linXErr) < self.errThresh and abs(linYErr) < self.errThresh and \
-            abs(linZErr) < self.errThresh and abs(angZErr) < self.errThresh:
+        if abs(linXErr) < 0.1 and abs(linYErr) < 20 and \
+            abs(linZErr) < 10 and abs(angZErr) < 0.35:
             command.linear.x = 0.0
             command.linear.y = 0.0
             command.linear.z = 0.0
@@ -151,7 +159,7 @@ class CvDroneController():
             print("----------------------- Hovering!!!")
 
         else:
-            controlX = (self.kp_zy * linXErr) + (self.kd_zy * d_linXErr) + (self.ki_zy * self.i_linX)
+            controlX = (self.kp_x * linXErr) + (self.kd_x * d_linXErr) + (self.ki_x * self.i_linX)
             command.linear.x = np.sign(controlX) * min(self.ctrlLimit, abs(controlX))
 
             controlY = (self.kp_zy * linYErr) + (self.kd_zy * d_linYErr) + (self.ki_zy * self.i_linY)
@@ -160,12 +168,12 @@ class CvDroneController():
             controlZ = (self.kp_zy * linZErr) + (self.kd_zy * d_linZErr) + (self.ki_zy * self.i_linZ)
             command.linear.z = np.sign(controlZ) * min(self.ctrlLimit, abs(controlZ))
             
-            # controlYaw = (self.kp * angZErr) + (self.kd * d_angZErr) + (self.ki * self.i_angZ)
-            # command.angular.z = np.sign(controlYaw) * min(self.ctrlLimit, abs(controlYaw))
+            controlYaw = (self.kp_ang * angZErr) + (self.kd_ang * d_angZErr) + (self.ki_ang * self.i_angZ)
+            command.angular.z = np.sign(controlYaw) * min(self.ctrlLimit, abs(controlYaw))
 
             command.angular.x = 0.0
             command.angular.y = 0.0
-            command.angular.z = 0.0
+            # command.angular.z = 0.0
             print("PID X:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linXErr), \
                 (self.ki_zy * self.i_linX), (self.kd_zy * d_linXErr)))
             print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linYErr), \

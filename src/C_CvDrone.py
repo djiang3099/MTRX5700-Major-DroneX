@@ -141,7 +141,7 @@ class CvDrone:
                 print("---------------------------------- Video stream lagging!")
                 self.command = self.PID.hover()
             
-            self.commandDrone(self.command)
+            self.publishCommand(self.command)
                
             
         else:   # Waiting for takeoff, just publish status
@@ -322,11 +322,13 @@ class CvDrone:
             if rightOut == 1 and leftOut == 1:
                 print("Hover Gesture!!")
                 self.command = self.PID.hover()
-                self.commandDrone(self.command)
+                self.publishCommand(self.command)
             elif rightOut == 2 and leftOut == 2:
                 print("Unhover Gesture!!")
 
-            
+    def switch_camera(self):
+        
+        return
 
     def preprocess(self, image):
         frame = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -378,6 +380,6 @@ class CvDrone:
         concat = cv2.vconcat([contourImage,maskline])
         return concat, targetY, targetZ, w, h
 
-    def commandDrone(self, command):
+    def publishCommand(self, command):
         self.commandPub.publish(command)
         return
