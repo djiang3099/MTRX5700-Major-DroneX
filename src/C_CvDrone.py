@@ -42,9 +42,11 @@ class CvDrone:
         print("Initialised CV Drone")
 
         self.initTime = time
+        self.lastImgTime = time
         self.battery = -1
         self.takeoffFlag = -1
         self.prevAltitude = -1
+
 
         if controller is not None: 
             self.PID = controller
@@ -60,7 +62,7 @@ class CvDrone:
         self.navdataSub = rospy.Subscriber("/ardrone/navdata", Navdata, self.navdata_callback, queue_size=100)
         self.takeoffSub = rospy.Subscriber("/ardrone/takeoff", std_msgs.msg.Empty, self.takeoff_callback, queue_size=1000)
         self.landSub = rospy.Subscriber("/ardrone/land", std_msgs.msg.Empty, self.land_callback, queue_size=1000)
-        self.openposeSub = rospy.Subscriber("/openpose_ros/human_list",OpenPoseHumanList, self.openpose_callback, queue_size=1000)
+        # self.openposeSub = rospy.Subscriber("/openpose_ros/human_list",OpenPoseHumanList, self.openpose_callback, queue_size=1000)
 
 
         self.commandPub = rospy.Publisher('cmd_vel', geometry_msgs.msg.Twist, queue_size=100)    
@@ -69,7 +71,7 @@ class CvDrone:
 
         # CV Thresholds
         self.greenLower = (49, 21, 42)
-        self.greenUpper = (103, 176, 160)
+        self.greenUpper = (103, 200, 200)
 
         self.first = True
         self.centreX = None
@@ -163,7 +165,6 @@ class CvDrone:
         # Convert from ROS image to opencv image
         ###### For non compressed images
         image = self.bridge.imgmsg_to_cv2(image_message, desired_encoding="bgr8")
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         
         ###### For compressed images
         # np_arr = np.fromstring(image_message.data, np.uint8)  
@@ -171,28 +172,29 @@ class CvDrone:
 
         frame = self.preprocess(image)
 
-        # self.output, targetY, targetZ, targetW, targetH = self.get_contours(frame)
+        self.output, targetY, targetZ, targetW, targetH = self.get_contours(frame)
         # self.output, _, _, _, _ = self.get_contours(frame)
-        cv2.rectangle(image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 1)
+        # cv2.rectangle(image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 1)
         # print("size", self.box_x2 - self.box_x1, self.box_y2 - self.box_y1)
-        cv2.imshow("Output", image)
+        cv2.imshow("Output", self.output)
 
         cv2.waitKey(1)
 
         if self.first:
             size = frame.shape      
             self.PID.set_centre(320, 180)
-            self.PID.set_target_size(130, 200)
+            self.PID.set_target_size(30, 50)
             print("Frame size: {}, {}".format(size[1], size[0])) # 640 wide, 360 high
             self.first = 0
 
-        # if not self.targetFound:
-        #     print("----------------------- Target lost")
-        #     self.command = self.PID.hover()
-        # else:
-        #     time = rospy.get_time() - self.initTime
-        #     self.command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
+        if not self.targetFound:
+            print("----------------------- Target lost")
+            self.command = self.PID.hover()
+        else:
+            time = rospy.get_time() - self.initTime
+            self.command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
 
+        self.lastImgTime = rospy.get_time()
         
 
         # print("##############missing body parts?", self.missingBodyParts)
@@ -217,47 +219,6 @@ class CvDrone:
         print ("----------------------- Land, Battery: {}", self.battery)
 
         return
-
-    def openpose_callback(self, openposeMsg):
-        # print ("Openpose msg received! no. of humans in frame: ", openposeMsg.num_humans)
-        maxHeight = 0
-        self.lastImgTime = rospy.get_time()
-        self.missingBodyParts = True
-
-        if openposeMsg.human_list:
-            for person in openposeMsg.human_list:
-                opNeck = person.body_key_points_with_prob[NECK]
-                opRSh = person.body_key_points_with_prob[RSH]
-                opLSh = person.body_key_points_with_prob[LSH]
-                opMHip = person.body_key_points_with_prob[MHIP]
-                opRHip = person.body_key_points_with_prob[RHIP]
-                opLHip = person.body_key_points_with_prob[LHIP]
-                person_x1 = int(min(opRSh.x, opRHip.x))
-                person_x2 = int(max(opLSh.x, opLHip.x))
-                person_y1 = int(min(opNeck.y, opRSh.y, opLSh.y))
-                person_y2 = int(max(opMHip.y, opRHip.y, opLHip.y))
-                personHeight = person_y2 - person_y1
-
-                if  opRSh.x != 0 and opLSh.x != 0 and opRHip != 0 and opRHip != 0 :
-                    if personHeight > maxHeight:
-                        maxHeight = personHeight
-                        self.box_x1 = person_x1
-                        self.box_x2 = person_x2
-                        self.box_y1 = person_y1
-                        self.box_y2 = person_y2
-                        self.missingBodyParts = False
-                        
-        if self.missingBodyParts:
-            print("MISSING BODY PARTS")
-            self.command = self.PID.hover()
-        else:
-            targetY = self.box_x1
-            targetZ = self.box_y1
-            targetW = self.box_x2 - self.box_x1
-            targetH = self.box_y2 - self.box_y1
-            time = rospy.get_time() - self.initTime
-            self.command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
-
 
     def preprocess(self, image):
         frame = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
