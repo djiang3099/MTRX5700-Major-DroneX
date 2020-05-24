@@ -15,13 +15,15 @@ import sensor_msgs.msg
 import nav_msgs.msg
 import std_msgs
 import geometry_msgs.msg
-from mtrx_major.msg import Navdata
 from geometry_msgs.msg import Twist, Vector3, Pose, PoseWithCovariance, Point, Quaternion
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu, Image, CompressedImage
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from std_msgs.msg import Int8, Empty
 from openpose_ros_msgs.msg import OpenPoseHumanList
+
+from mtrx_major.msg import Navdata
+from mtrx_major.srv import CamSelect
 
 from get_gradient import get_grad
 from C_CvDroneController import CvDroneController
@@ -84,6 +86,8 @@ class CvDrone:
         self.box_x2 = 0
         self.box_y1 = 0
         self.box_y2 = 0
+
+        self.switch_camera()
 
         self.missingBodyParts = True
 
@@ -151,7 +155,7 @@ class CvDrone:
             rpy = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
             # print('Waiting for takeoff... Battery: {}, Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
             #     .format(self.battery,pos.x,pos.y,pos.z,rpy[0],rpy[1],rpy[2]))
-                
+            
         return
 
     def navdata_callback(self, navdataMsg):
@@ -345,7 +349,13 @@ class CvDrone:
 
 
     def switch_camera(self):
-        
+        rospy.wait_for_service('CamSelect')
+        try:
+            CamSelect = rospy.ServiceProxy('CamSelect', CamSelect)
+            resp1 = CamSelect(1)
+            return resp1.result
+        except rospy.ServiceException as e:
+            print("Service call failed: %s"%e)
         return
 
     def preprocess(self, image):
