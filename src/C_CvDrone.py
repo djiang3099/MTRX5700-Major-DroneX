@@ -128,6 +128,8 @@ class CvDrone:
             x,y,z,w = quaternion_from_euler(newRoll,newPitch,newYaw,'rxyz')
             odomMsg.pose.pose.orientation = Quaternion(x,y,z,w)
         
+            self.PID.yaw = newYaw
+
             # print('Drone flying!! Zeroed Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
             #     .format(posX, posY, posZ, newRoll, newPitch, newYaw))
 
@@ -280,6 +282,7 @@ class CvDrone:
             lRst = person.body_key_points_with_prob[LRST]
             lRst = Point(lRst.x, lRst.y, 0)
             leftOut = 0
+            leftLand = 0
             
             # Right hand points
             rSh = person.body_key_points_with_prob[RSH]
@@ -289,46 +292,55 @@ class CvDrone:
             rRst = person.body_key_points_with_prob[RRST]
             rRst = Point(rRst.x, rRst.y, 0)
             rightOut = 0
+            rightLand = 0
+
+            rlShiftThr = targetH/4
+            unhoverThr = targetH/8
+            unhoverUDThr = targetH/10.6
+            unhoverLRThr = targetH/7
+            landUDThr = targetH/2
 
             # Check for any gestures
             # Left hand outstretched? Segments in line and not stacked
             if lSh.x and lElb.x and lRst.x != 0:
-                if abs( get_grad(lSh, lElb) - get_grad(lSh, lRst) ) < 0.2 and \
-                    abs(get_grad(lSh, lRst)) < 0.2:
-                    if lSh.x < lElb.x < lRst.x:
+                if abs( get_grad(lSh, lElb) - get_grad(lSh, lRst) ) < 0.3 and \
+                    abs(get_grad(lSh, lRst)) < 0.45:
+                    if lSh.x < lElb.x < lRst.x and (lRst.x - lSh.x) > rlShiftThr:
                         leftOut = 1
                         print("Left shift Gesture!!")
                         y, z = self.PID.get_centre()
                         self.PID.set_centre(y+5, z)
-                    elif abs(lSh.x - lRst.x) < 20:
-                        leftOut = 2
-                        print("Un-hover left")
-                else: 
-                    leftOut = 0
-                if (abs(lSh.x - lRst.x) < 20)  and ( lRst.y - lSh.y > 30 ) and (lSh.x > lElb.x) and (lRst.x > lElb.x):
+                if (abs(lSh.x - lRst.x) < unhoverThr)  and ( lSh.y - lRst.y > unhoverUDThr ) and \
+                    (lElb.x - lSh.x > unhoverLRThr) and (lElb.x - lRst.x > unhoverLRThr):
+                    leftOut = 2
+                    print("Un-hover left")
+
+                if (abs(lSh.x - lRst.x) < unhoverThr)  and ( lRst.y - lSh.y > landUDThr ) and \
+                    (lElb.x - lSh.x > unhoverLRThr) and (lElb.x - lRst.x > unhoverLRThr):
                     leftLand = 1
-                else:
-                    leftLand = 0
 
             # Right hand outstretched?   
             if rSh.x and rElb.x and rRst.x != 0:
-                if abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ) < 0.2 and \
-                    abs( get_grad(rSh, rElb) ) < 0.2:
-                    if rSh.x > rElb.x > rRst.x:
+                # print(abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ), "< 0.3??  ",  abs(get_grad(rSh, rRst)), "< 0.6?")
+
+                if abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ) < 0.3 and \
+                    abs( get_grad(rSh, rRst) ) < 0.6:
+                    # print (rSh.x, rElb.x, rRst.x, "< < <     ", (rRst.x - rSh.x), "<", rlShiftThr)
+
+                    if rSh.x > rElb.x > rRst.x and (rSh.x - rRst.x) > rlShiftThr:
                         rightOut = 1
                         print("Right shift Gesture!!")
                         y, z = self.PID.get_centre()
                         self.PID.set_centre(y-5, z)
-                    elif abs(lSh.x - lRst.x) < 20:
-                        rightOut = 2
-                        print("Un-hover right")
-                else: 
-                    rightOut = 0
+            
+                if (abs(rSh.x - rRst.x) < unhoverThr) and ( rSh.y - rRst.y > unhoverUDThr ) and \
+                    (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
+                    rightOut = 2
+                    print("Un-hover right")
 
-                if (abs(rSh.x - rRst.x) < 20) and ( lRst.y - lSh.y > 30 ) and (rSh.x > rElb.x) and (rRst.x > rElb.x):
+                if (abs(rSh.x - rRst.x) < unhoverThr) and ( rRst.y - rSh.y > landUDThr ) and \
+                    (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
                     rightLand = 1
-                else:
-                    rightLand = 0
 
             # Both hands outstreched
             if rightOut == 1 and leftOut == 1:
