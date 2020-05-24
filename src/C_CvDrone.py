@@ -20,7 +20,7 @@ from geometry_msgs.msg import Twist, Vector3, Pose, PoseWithCovariance, Point, Q
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu, Image, CompressedImage
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-from std_msgs.msg import Int8
+from std_msgs.msg import Int8, Empty
 from openpose_ros_msgs.msg import OpenPoseHumanList
 
 from get_gradient import get_grad
@@ -40,6 +40,7 @@ LHIP = 12
 class CvDrone:
     def __init__(self, time, controller=None):
         print("Initialised CV Drone")
+
 
         self.initTime = time
         self.battery = -1
@@ -65,7 +66,7 @@ class CvDrone:
 
         self.commandPub = rospy.Publisher('cmd_vel', geometry_msgs.msg.Twist, queue_size=100)    
         self.zeroOdomPub = rospy.Publisher('dronex/odom', nav_msgs.msg.Odometry, queue_size=100)
-        
+        self.landingPub = rospy.Publisher('ardrone/land', std_msgs.msg.Empty, queue_size=10)
 
         # CV Thresholds
         self.greenLower = (49, 21, 42)
@@ -190,7 +191,7 @@ class CvDrone:
         if self.first:
             size = frame.shape      
             self.PID.set_centre(320, 180)
-            self.PID.set_target_size(130, 200)
+            self.PID.set_target_size(130, 160)
             # was 130 height
             print("Frame size: {}, {}".format(size[1], size[0])) # 640 wide, 360 high
             self.first = 0
@@ -292,31 +293,42 @@ class CvDrone:
             # Check for any gestures
             # Left hand outstretched? Segments in line and not stacked
             if lSh.x and lElb.x and lRst.x != 0:
-                if abs( get_grad(lSh, lElb) - get_grad(lSh, lRst) ) < 0.2:
+                if abs( get_grad(lSh, lElb) - get_grad(lSh, lRst) ) < 0.2 and \
+                    abs(get_grad(lSh, lRst)) < 0.2:
                     if lSh.x < lElb.x < lRst.x:
                         leftOut = 1
                         print("Left shift Gesture!!")
                         y, z = self.PID.get_centre()
-                        self.PID.set_centre(y-5, z)
+                        self.PID.set_centre(y+5, z)
                     elif abs(lSh.x - lRst.x) < 20:
                         leftOut = 2
                         print("Un-hover left")
                 else: 
                     leftOut = 0
+                if (abs(lSh.x - lRst.x) < 20)  and ( lRst.y - lSh.y > 30 ) and (lSh.x > lElb.x) and (lRst.x > lElb.x):
+                    leftLand = 1
+                else:
+                    leftLand = 0
 
             # Right hand outstretched?   
             if rSh.x and rElb.x and rRst.x != 0:
-                if abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ) < 0.2:
-                    if lSh.x < lElb.x < lRst.x:
+                if abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ) < 0.2 and \
+                    abs( get_grad(rSh, rElb) ) < 0.2:
+                    if rSh.x > rElb.x > rRst.x:
                         rightOut = 1
                         print("Right shift Gesture!!")
                         y, z = self.PID.get_centre()
-                        self.PID.set_centre(y+5, z)
+                        self.PID.set_centre(y-5, z)
                     elif abs(lSh.x - lRst.x) < 20:
                         rightOut = 2
                         print("Un-hover right")
                 else: 
                     rightOut = 0
+
+                if (abs(rSh.x - rRst.x) < 20) and ( lRst.y - lSh.y > 30 ) and (rSh.x > rElb.x) and (rRst.x > rElb.x):
+                    rightLand = 1
+                else:
+                    rightLand = 0
 
             # Both hands outstreched
             if rightOut == 1 and leftOut == 1:
@@ -325,6 +337,12 @@ class CvDrone:
                 self.publishCommand(self.command)
             elif rightOut == 2 and leftOut == 2:
                 print("Unhover Gesture!!")
+            
+            # Landing
+            if leftLand == 1 and rightLand == 1:
+                print("LAND")
+                self.landingPub.publish(Empty())
+
 
     def switch_camera(self):
         
