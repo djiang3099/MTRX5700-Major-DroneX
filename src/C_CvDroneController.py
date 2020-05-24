@@ -23,7 +23,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from std_msgs.msg import Int8
 
 class CvDroneController():
-    def __init__(self, time, kp=0.001, ki=0.00005, kd=0.0001):
+    def __init__(self, time, kp=0.001, ki=0.0000, kd=0.0001):
         print("Initialising drone controller...", time)
         # Track the time the controller is called at and initial time
         self.lastTime = time
@@ -170,8 +170,8 @@ class CvDroneController():
             # controlX = (self.kp_x * linXErr) + (self.kd_x * d_linXErr) + 0*(self.ki_x * self.i_linX)
             # command.linear.x = np.sign(controlX) * min(self.ctrlLimit, abs(controlX))
 
-            # controlY = (self.kp_zy * linYErr) + (self.kd_zy * d_linYErr) + (self.ki_zy * self.i_linY)
-            # command.linear.y = np.sign(controlY)* min(self.ctrlLimit, abs(controlY))
+            controlY = (self.kp_zy*0.15 * linYErr) + (self.kd_zy * d_linYErr) + (self.ki_zy * self.i_linY)
+            command.linear.y = np.sign(controlY)* min(self.ctrlLimit, abs(controlY))
             
             controlZ = (self.kp_zy * linZErr) + (self.kd_zy * d_linZErr) + 0*(self.ki_zy * self.i_linZ)
             command.linear.z = np.sign(controlZ) * min(self.ctrlLimit, abs(controlZ))
@@ -182,10 +182,10 @@ class CvDroneController():
 
             # print("PID X:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linXErr), \
             #     (self.ki_zy * self.i_linX), (self.kd_zy * d_linXErr)))
-        #     print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linYErr), \
-        #         (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
-            print("PID Z:   {:+05.4f}, {:+05.4f}, {:+05.4f}".format((self.kp_zy * linZErr), \
-                (self.ki_zy * self.i_linZ), (self.kd_zy * d_linZErr)))
+            print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linYErr), \
+                (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
+            # print("PID Z:   {:+05.4f}, {:+05.4f}, {:+05.4f}".format((self.kp_zy * linZErr), \
+            #     (self.ki_zy * self.i_linZ), (self.kd_zy * d_linZErr)))
             
 
         print("Error:   {:+05.4f}, {:+05.4f}, {:+05.4f}, Size: {}, {}".format(linXErr, linYErr, linZErr, w, h))
