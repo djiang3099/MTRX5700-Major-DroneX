@@ -68,7 +68,7 @@ cv.createTrackbar(high_V_name, window_detection_name , high_V, max_value, on_hig
 while True:
     
     # ret, frame = cap.read()
-    frame = cv.imread('green_cap.png')
+    frame = cv.imread('green1.png')
     if frame is None:
         break
     frame_HSV = cv.cvtColor(frame, cv.COLOR_BGR2HSV)

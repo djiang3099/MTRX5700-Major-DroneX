@@ -183,7 +183,7 @@ class CvDrone:
         if self.first:
             size = frame.shape      
             self.PID.set_centre(320, 180)
-            self.PID.set_target_size(30, 50)
+            self.PID.set_target_size(50, 80)
             print("Frame size: {}, {}".format(size[1], size[0])) # 640 wide, 360 high
             self.first = 0
 
