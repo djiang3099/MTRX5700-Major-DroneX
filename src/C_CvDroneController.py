@@ -27,6 +27,7 @@ class CvDroneController():
         print("Initialising drone controller...", time)
         # Track the time the controller is called at and initial time
         self.lastTime = time
+        self.yaw = 0.0
 
         # Actuation limit
         self.ctrlLimit = 0.1    # Max control output
@@ -111,7 +112,7 @@ class CvDroneController():
     def compute(self, time, y, z, w, h):
         command = Twist()
         dt = time - self.lastTime
-        print("dt", dt,  h/self.refHeight)
+        # print("dt", dt,  h/self.refHeight)
         self.lastTime = time
 
 
@@ -136,7 +137,7 @@ class CvDroneController():
         # Compute Integral error with saturation
         self.i_linX = np.sign(self.i_linX + linXErr*dt) * min(self.intSat, \
             abs(self.i_linX + linXErr*dt))
-        print("Integral ", self.i_linY + linYErr*dt, self.i_linZ + linZErr*dt)
+        # print("Integral ", self.i_linY + linYErr*dt, self.i_linZ + linZErr*dt)
         if abs(dt) < 50:
             # self.i_linY = self.i_linY + linYErr*dt
             # self.i_linZ  =self.i_linZ + linZErr*dt
@@ -174,16 +175,16 @@ class CvDroneController():
             command.angular.x = 0.0
             command.angular.y = 0.0
             # command.angular.z = 0.0
-            print("PID X:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linXErr), \
-                (self.ki_zy * self.i_linX), (self.kd_zy * d_linXErr)))
-            print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linYErr), \
-                (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
-            print("PID Z:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linZErr), \
-                (self.ki_zy * self.i_linZ), (self.kd_zy * d_linZErr)))
+        #     print("PID X:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linXErr), \
+        #         (self.ki_zy * self.i_linX), (self.kd_zy * d_linXErr)))
+        #     print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linYErr), \
+        #         (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
+        #     print("PID Z:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linZErr), \
+        #         (self.ki_zy * self.i_linZ), (self.kd_zy * d_linZErr)))
             
 
-        print("Error:   {}, {}, {}, Size: {}, {}".format(linXErr, linYErr, linZErr, w, h))
-        print("Command: {:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2}\n".format(command.linear.x,\
-            command.linear.y, command.linear.z, command.angular.x ,command.angular.y,\
-                command.angular.z))
+        # print("Error:   {}, {}, {}, Size: {}, {}".format(linXErr, linYErr, linZErr, w, h))
+        # print("Command: {:.2}, {:.2}, {:.2}, {:.2}, {:.2}, {:.2}\n".format(command.linear.x,\
+        #     command.linear.y, command.linear.z, command.angular.x ,command.angular.y,\
+        #         command.angular.z))
         return command
