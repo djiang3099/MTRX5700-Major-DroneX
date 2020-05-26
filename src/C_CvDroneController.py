@@ -118,8 +118,8 @@ class CvDroneController():
 
         # Compute Proportional error
         linXErr = (1 - float(h)/self.refHeight) * 100
-        linYErr = self.centreY - y
-        linZErr = self.centreZ - z
+        linYErr = self.centreY - (y+w/2)
+        linZErr = self.centreZ - (z+h/2)
         angZErr = self.goalYaw - self.yaw
 
         # Compute Derivative error
@@ -185,13 +185,13 @@ class CvDroneController():
 
             # print("PID X:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linXErr), \
             #     (self.ki_zy * self.i_linX), (self.kd_zy * d_linXErr)))
-            # print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linYErr), \
-            #     (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
+            print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy*0.15 * linYErr), \
+                (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
             # print("PID Z:   {:+05.4f}, {:+05.4f}, {:+05.4f}".format((self.kp_zy * linZErr), \
             #     (self.ki_zy * self.i_linZ), (self.kd_zy * d_linZErr)))
             
 
-        print("Error:   {:+05.4f}, {:+05.4f}, {:+05.4f}, Size: {}, {}".format(linXErr, linYErr, linZErr, w, h))
+        print("Error:   {:+05.2f}, {:+05.2f}, {:+05.2f}, Size: {}, {}".format(linXErr, linYErr, linZErr, w, h))
         print("Command: {:+05.4f}, {:+05.4f}, {:+05.4f}, {:+05.4f}, {:+05.4f}, {:+05.4f}\n".format(command.linear.x,\
             command.linear.y, command.linear.z, command.angular.x ,command.angular.y,\
                 command.angular.z))

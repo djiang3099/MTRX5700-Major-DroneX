@@ -212,11 +212,11 @@ class CvDrone:
                                         (0,0,255), 4)  
             if self.command.linear.y > 0:
                 image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
-                    (self.PID.centreY-int(10+300*self.command.linear.z),self.PID.centreZ), 
+                    (self.PID.centreY-int(10+300*self.command.linear.y),self.PID.centreZ), 
                                         (0,0,255), 4)  
             else:
                 image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
-                    (self.PID.centreY+int(10-300*self.command.linear.z),self.PID.centreZ), 
+                    (self.PID.centreY+int(10-300*self.command.linear.y),self.PID.centreZ), 
                                         (0,0,255), 4)  
 
         cv2.imshow("Output", image)
