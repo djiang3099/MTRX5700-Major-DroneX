@@ -204,20 +204,20 @@ class CvDrone:
         else:
             if self.command.linear.z > 0:
                 image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
-                    (self.PID.centreY,self.PID.centreZ-20), 
-                                        (0,0,255), int(90*self.command.linear.z))  
+                    (self.PID.centreY,self.PID.centreZ-int(10+300*self.command.linear.z)), 
+                                        (0,0,255), 4)  
             else:
                 image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
-                    (self.PID.centreY,self.PID.centreZ+20), 
-                                        (0,0,255), int(90*-self.command.linear.z))  
+                    (self.PID.centreY,self.PID.centreZ+int(10-300*self.command.linear.z)), 
+                                        (0,0,255), 4)  
             if self.command.linear.y > 0:
                 image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
-                    (self.PID.centreY-20,self.PID.centreZ), 
-                                        (0,0,255), int(90*self.command.linear.y))  
+                    (self.PID.centreY-int(10+300*self.command.linear.z),self.PID.centreZ), 
+                                        (0,0,255), 4)  
             else:
                 image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
-                    (self.PID.centreY+20,self.PID.centreZ), 
-                                        (0,0,255), int(90*-self.command.linear.y))  
+                    (self.PID.centreY+int(10-300*self.command.linear.z),self.PID.centreZ), 
+                                        (0,0,255), 4)  
 
         cv2.imshow("Output", image)
 
@@ -378,10 +378,10 @@ class CvDrone:
                 print("Hover Gesture!!")
                 self.command = self.PID.hover()
                 self.publishCommand(self.command)
-                self.hovering = True;
+                self.hovering = True
             elif rightOut == 2 and leftOut == 2:
                 print("Unhover Gesture!!")
-                self.hovering = False;
+                self.hovering = False
             elif rightOut == 1 and not self.hovering:
                 print("Right shift Gesture!!")
                 y, z = self.PID.get_centre()
