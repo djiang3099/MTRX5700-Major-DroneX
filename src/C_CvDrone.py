@@ -286,102 +286,102 @@ class CvDrone:
             time = rospy.get_time() - self.initTime
             self.command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
 
-        #     # Left hand points
-        #     lSh = person.body_key_points_with_prob[LSH]
-        #     lSh = Point(lSh.x, lSh.y, 0)
-        #     lElb = person.body_key_points_with_prob[LELB]
-        #     lElb = Point(lElb.x, lElb.y, 0)
-        #     lRst = person.body_key_points_with_prob[LRST]
-        #     lRst = Point(lRst.x, lRst.y, 0)
-        #     leftOut = 0
-        #     leftLand = 0
+            # Left hand points
+            lSh = person.body_key_points_with_prob[LSH]
+            lSh = Point(lSh.x, lSh.y, 0)
+            lElb = person.body_key_points_with_prob[LELB]
+            lElb = Point(lElb.x, lElb.y, 0)
+            lRst = person.body_key_points_with_prob[LRST]
+            lRst = Point(lRst.x, lRst.y, 0)
+            leftOut = 0
+            leftLand = 0
             
-        #     # Right hand points
-        #     rSh = person.body_key_points_with_prob[RSH]
-        #     rSh = Point(rSh.x, rSh.y, 0)
-        #     rElb = person.body_key_points_with_prob[RELB]
-        #     rElb = Point(rElb.x, rElb.y, 0)
-        #     rRst = person.body_key_points_with_prob[RRST]
-        #     rRst = Point(rRst.x, rRst.y, 0)
-        #     rightOut = 0
-        #     rightLand = 0
+            # Right hand points
+            rSh = person.body_key_points_with_prob[RSH]
+            rSh = Point(rSh.x, rSh.y, 0)
+            rElb = person.body_key_points_with_prob[RELB]
+            rElb = Point(rElb.x, rElb.y, 0)
+            rRst = person.body_key_points_with_prob[RRST]
+            rRst = Point(rRst.x, rRst.y, 0)
+            rightOut = 0
+            rightLand = 0
 
-        #     rlShiftThr = targetH/4
-        #     unhoverThr = targetH/8
-        #     unhoverUDThr = targetH/10.6
-        #     unhoverLRThr = targetH/7
-        #     landUDThr = targetH/2
+            rlShiftThr = targetH/4
+            unhoverThr = targetH/8
+            unhoverUDThr = targetH/10.6
+            unhoverLRThr = targetH/7
+            landUDThr = targetH/2
 
-        #     # Check for any gestures
-        #     # Left hand outstretched? Segments in line and not stacked
-        #     if lSh.x and lElb.x and lRst.x != 0:
-        #         if abs( get_grad(lSh, lElb) - get_grad(lSh, lRst) ) < 0.3 and \
-        #             abs(get_grad(lSh, lRst)) < 0.6:
-        #             if lSh.x < lElb.x < lRst.x and (lRst.x - lSh.x) > rlShiftThr:
-        #                 leftOut = 1
-        #                 print("shift left")
-        #         if (abs(lSh.x - lRst.x) < unhoverThr)  and ( lSh.y - lRst.y > unhoverUDThr ) and \
-        #             (lElb.x - lSh.x > unhoverLRThr) and (lElb.x - lRst.x > unhoverLRThr):
-        #             leftOut = 2
-        #             print("Un-hover left")
+            # Check for any gestures
+            # Left hand outstretched? Segments in line and not stacked
+            if lSh.x and lElb.x and lRst.x != 0:
+                if abs( get_grad(lSh, lElb) - get_grad(lSh, lRst) ) < 0.3 and \
+                    abs(get_grad(lSh, lRst)) < 0.6:
+                    if lSh.x < lElb.x < lRst.x and (lRst.x - lSh.x) > rlShiftThr:
+                        leftOut = 1
+                        print("shift left")
+                if (abs(lSh.x - lRst.x) < unhoverThr)  and ( lSh.y - lRst.y > unhoverUDThr ) and \
+                    (lElb.x - lSh.x > unhoverLRThr) and (lElb.x - lRst.x > unhoverLRThr):
+                    leftOut = 2
+                    print("Un-hover left")
 
-        #         if (abs(lSh.x - lRst.x) < unhoverThr)  and ( lRst.y - lSh.y > landUDThr ) and \
-        #             (lElb.x - lSh.x > unhoverLRThr) and (lElb.x - lRst.x > unhoverLRThr):
-        #             leftLand = 1
+                if (abs(lSh.x - lRst.x) < unhoverThr)  and ( lRst.y - lSh.y > landUDThr ) and \
+                    (lElb.x - lSh.x > unhoverLRThr) and (lElb.x - lRst.x > unhoverLRThr):
+                    leftLand = 1
 
-        #     # Right hand outstretched?   
-        #     if rSh.x and rElb.x and rRst.x != 0:
-        #         # print(abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ), "< 0.3??  ",  abs(get_grad(rSh, rRst)), "< 0.6?")
-        #         if abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ) < 0.3 and \
-        #             abs( get_grad(rSh, rRst) ) < 0.6:
-        #             # print (rSh.x, rElb.x, rRst.x, "< < <     ", (rRst.x - rSh.x), "<", rlShiftThr)
-        #             if rSh.x > rElb.x > rRst.x and (rSh.x - rRst.x) > rlShiftThr:
-        #                 rightOut = 1
-        #                 print("shift right")
+            # Right hand outstretched?   
+            if rSh.x and rElb.x and rRst.x != 0:
+                # print(abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ), "< 0.3??  ",  abs(get_grad(rSh, rRst)), "< 0.6?")
+                if abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ) < 0.3 and \
+                    abs( get_grad(rSh, rRst) ) < 0.6:
+                    # print (rSh.x, rElb.x, rRst.x, "< < <     ", (rRst.x - rSh.x), "<", rlShiftThr)
+                    if rSh.x > rElb.x > rRst.x and (rSh.x - rRst.x) > rlShiftThr:
+                        rightOut = 1
+                        print("shift right")
             
-        #         if (abs(rSh.x - rRst.x) < unhoverThr) and ( rSh.y - rRst.y > unhoverUDThr ) and \
-        #             (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
-        #             rightOut = 2
-        #             print("Un-hover right")
+                if (abs(rSh.x - rRst.x) < unhoverThr) and ( rSh.y - rRst.y > unhoverUDThr ) and \
+                    (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
+                    rightOut = 2
+                    print("Un-hover right")
 
-        #         if (abs(rSh.x - rRst.x) < unhoverThr) and ( rRst.y - rSh.y > landUDThr ) and \
-        #             (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
-        #             rightLand = 1
+                if (abs(rSh.x - rRst.x) < unhoverThr) and ( rRst.y - rSh.y > landUDThr ) and \
+                    (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
+                    rightLand = 1
 
-        #     # Both hands outstreched
-        #     if rightOut == 1 and leftOut == 1:
-        #         print("Hover Gesture!!")
-        #         self.command = self.PID.hover()
-        #         self.publishCommand(self.command)
-        #         self.hovering = True;
-        #     elif rightOut == 2 and leftOut == 2:
-        #         print("Unhover Gesture!!")
-        #         self.hovering = False;
-        #     elif rightOut == 1 and not self.hovering:
-        #         print("Right shift Gesture!!")
-        #         y, z = self.PID.get_centre()
-        #         self.PID.set_centre(y-5, z)
-        #     elif leftOut == 1 and not self.hovering:
-        #         print("Left shift Gesture!!")
-        #         y, z = self.PID.get_centre()
-        #         self.PID.set_centre(y+5, z)
+            # Both hands outstreched
+            if rightOut == 1 and leftOut == 1:
+                print("Hover Gesture!!")
+                self.command = self.PID.hover()
+                self.publishCommand(self.command)
+                self.hovering = True;
+            elif rightOut == 2 and leftOut == 2:
+                print("Unhover Gesture!!")
+                self.hovering = False;
+            elif rightOut == 1 and not self.hovering:
+                print("Right shift Gesture!!")
+                y, z = self.PID.get_centre()
+                self.PID.set_centre(y-5, z)
+            elif leftOut == 1 and not self.hovering:
+                print("Left shift Gesture!!")
+                y, z = self.PID.get_centre()
+                self.PID.set_centre(y+5, z)
             
-        #     # Landing
-        #     if leftLand == 1 and rightLand == 1:
-        #         print("LAND")
-        #         # self.goalController.compute_goal()
-        #         self.landingPub.publish(Empty())
+            # Landing
+            if leftLand == 1 and rightLand == 1:
+                print("LAND")
+                # self.goalController.compute_goal()
+                self.landingPub.publish(Empty())
         return
 
 
     def switch_camera(self, num):    
-        rospy.wait_for_service('CamSelect')
+        rospy.wait_for_service('setcamchannel')
         try:
             if num == 1:
                 print("------------------------------------ Switching to BACK camera!")
             elif num == 0:
                 print("------------------------------------ Switching to FRONT camera!")
-            CamSelect = rospy.ServiceProxy('CamSelect', CamSelect)
+            CamSelect = rospy.ServiceProxy('setcamchannel', SetCamChannelCallback)
             resp1 = CamSelect(num)
             return resp1.result
         except rospy.ServiceException as e:
