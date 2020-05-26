@@ -23,7 +23,7 @@ from std_msgs.msg import Int8, Empty
 from openpose_ros_msgs.msg import OpenPoseHumanList
 
 from mtrx_major.msg import Navdata
-from mtrx_major.srv import CamSelect
+from ardrone_autonomy.srv import CamSelect
 
 from get_gradient import get_grad
 from C_CvDroneController import CvDroneController
@@ -47,13 +47,13 @@ class CvDrone:
         self.initTime = time
         self.battery = -1
         self.takeoffFlag = -1
+        self.waitReady = 0
         self.prevAltitude = -1
 
         if controller is not None: 
             self.PID = controller
         else: 
             self.PID = DroneController()
-
 
         # Subscribers and Publishers
         self.bridge = CvBridge()
@@ -107,9 +107,9 @@ class CvDrone:
             quat = odomMsg.pose.pose.orientation
             self.initRPY = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
             # print("Prev alt: {:.4f}, curr alt: {:.4f}".format(self.prevAltitude))
-            if self.prevAltitude > self.initPos.z:
+            if self.prevAltitude > self.initPos.z and self.waitReady == 1:
                 self.takeoffFlag = 1
-            else: 
+            elif self.prevAltitude < self.initPos.z: 
                 self.prevAltitude = self.initPos.z
             
             # print('Drone taking off!! Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
@@ -249,17 +249,18 @@ class CvDrone:
         return
 
     def takeoff_callback(self, takeoffMsg):
-        print('----------------------- Taking off!')
+        print('----------------------------------- Taking off!')
         # Reset takeoff flag, need to rezero the 'world' frame.
         self.takeoffFlag = 0
 
         # Wait for 4 seconds to allow drone to takeoff uninterrupted
-        rospy.sleep(4.)
-        print("----------------------- Finished sleeping")
+        rospy.sleep(8.)
+        self.waitReady = 1
+        print("----------------------------------- Finished sleeping")
         return
 
     def land_callback(self, landMsg):
-        print ("----------------------- Land, Battery: {}", self.battery)
+        print ("---------------------------------- Land, Battery: {}, Yaw: {}".format(self.battery, self.PID.yaw))
 
         return
 
@@ -380,11 +381,12 @@ class CvDrone:
                 self.hovering = True;
             elif rightOut == 2 and leftOut == 2:
                 print("Unhover Gesture!!")
-            elif rightOut == 1:
+                self.hovering = False;
+            elif rightOut == 1 and not self.hovering:
                 print("Right shift Gesture!!")
                 y, z = self.PID.get_centre()
                 self.PID.set_centre(y-5, z)
-            elif leftOut == 1:
+            elif leftOut == 1 and not self.hovering:
                 print("Left shift Gesture!!")
                 y, z = self.PID.get_centre()
                 self.PID.set_centre(y+5, z)
@@ -394,16 +396,17 @@ class CvDrone:
                 print("LAND")
                 # self.goalController.compute_goal()
                 self.landingPub.publish(Empty())
+        return
 
 
     def switch_camera(self, num):    
-        rospy.wait_for_service('CamSelect')
+        rospy.wait_for_service('setcamchannel')
         try:
             if num == 1:
                 print("------------------------------------ Switching to BACK camera!")
             elif num == 0:
                 print("------------------------------------ Switching to FRONT camera!")
-            CamSelect = rospy.ServiceProxy('CamSelect', CamSelect)
+            CamSelect = rospy.ServiceProxy('setcamchannel', SetCamChannelCallback)
             resp1 = CamSelect(num)
             return resp1.result
         except rospy.ServiceException as e:
@@ -461,5 +464,6 @@ class CvDrone:
         return concat, targetY, targetZ, w, h
 
     def publishCommand(self, command):
+        # print("---------------------------------------------- publish")
         self.commandPub.publish(command)
         return
