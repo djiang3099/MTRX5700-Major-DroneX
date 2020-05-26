@@ -183,8 +183,8 @@ class CvDroneController():
             # controlYaw = (self.kp_ang * angZErr) + (self.kd_ang * d_angZErr) + (self.ki_ang * self.i_angZ)
             # command.angular.z = np.sign(controlYaw) * min(self.yawLimit, abs(controlYaw))
 
-            print("PID X:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linXErr), \
-                (self.ki_zy * self.i_linX), (self.kd_zy * d_linXErr)))
+            # print("PID X:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linXErr), \
+            #     (self.ki_zy * self.i_linX), (self.kd_zy * d_linXErr)))
             # print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linYErr), \
             #     (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
             # print("PID Z:   {:+05.4f}, {:+05.4f}, {:+05.4f}".format((self.kp_zy * linZErr), \
