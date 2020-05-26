@@ -43,7 +43,7 @@ class CvDrone:
     def __init__(self, time, controller=None):
         print("Initialised CV Drone")
 
-
+        self.command = Twist()
         self.initTime = time
         self.battery = -1
         self.takeoffFlag = -1
@@ -87,7 +87,7 @@ class CvDrone:
         self.box_y1 = 0
         self.box_y2 = 0
 
-        self.switch_camera(0)
+        # self.switch_camera(0)
 
         self.missingBodyParts = True
         self.hovering = False
@@ -184,15 +184,40 @@ class CvDrone:
 
         # self.output, targetY, targetZ, targetW, targetH = self.get_contours(frame)
         # self.output, _, _, _, _ = self.get_contours(frame)
+
+        # Mark the currently found target
         cv2.rectangle(image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 2)
         # print("size", self.box_x2 - self.box_x1, self.box_y2 - self.box_y1)
-        # Makr the drone goal and centre of the rectangle
+        cv2.circle(image, ( (self.box_x1 + self.box_x2)/2  , (self.box_y1 + self.box_y2)/2  ), 3, (0,255,0), 2)
+
+        
+        # Mark the goal target
         cv2.circle(image, (self.PID.centreY,self.PID.centreZ), 10, (0,0,255), -1)
         cv2.rectangle(image,( self.PID.centreY - self.PID.refWidth/2 , self.PID.centreZ - self.PID.refHeight/2 ), \
                             ( self.PID.centreY + self.PID.refWidth/2 , self.PID.centreZ + self.PID.refHeight/2 ), (0, 0, 255), 1)
 
-        
-        cv2.circle(image, ( (self.box_x1 + self.box_x2)/2  , (self.box_y1 + self.box_y2)/2  ), 3, (0,255,0), 2)
+        # Show on the screen what command velocity we're sending
+        # If drone is hovering, make goal centre green
+        if self.command.linear.x == self.command.linear.y == self.command.linear.z == 0.0:
+            cv2.circle(image, (self.PID.centreY,self.PID.centreZ), 10, (0,255,0), -1)
+        # Otherwise plot the com_vel as arrows
+        else:
+            if self.command.linear.z > 0:
+                image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
+                    (self.PID.centreY,self.PID.centreZ-20), 
+                                        (0,0,255), int(90*self.command.linear.z))  
+            else:
+                image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
+                    (self.PID.centreY,self.PID.centreZ+20), 
+                                        (0,0,255), int(90*-self.command.linear.z))  
+            if self.command.linear.y > 0:
+                image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
+                    (self.PID.centreY-20,self.PID.centreZ), 
+                                        (0,0,255), int(90*self.command.linear.y))  
+            else:
+                image = cv2.arrowedLine(image, (self.PID.centreY,self.PID.centreZ), \
+                    (self.PID.centreY+20,self.PID.centreZ), 
+                                        (0,0,255), int(90*-self.command.linear.y))  
 
         cv2.imshow("Output", image)
 
