@@ -92,6 +92,19 @@ class CvDrone:
         self.missingBodyParts = True
         self.hovering = False
 
+
+        self.droneOptionTexts= {
+		    0: "No Gesture Command Received",
+		    1: "Pan Left",
+		    2: "Pan Right",
+		    3: "Hover",
+		    4: "Unhover",
+		    5: "Land",
+            -1: "Waiting for Takeoff"
+		}
+
+        self.droneState = -1
+
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
             # cv2.imshow("Output", self.output)
@@ -194,6 +207,11 @@ class CvDrone:
         
         cv2.circle(image, ( (self.box_x1 + self.box_x2)/2  , (self.box_y1 + self.box_y2)/2  ), 3, (0,255,0), 2)
 
+        # Put commands to text image
+        text = self.droneOptionTexts[self.droneState]
+        # img, text (x,y), font, fontScale, fontColor, lineType
+        cv2.putText(image, text, (20,320), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (25,255,25), 2)
+        print("########################################",text)
         cv2.imshow("Output", image)
 
         cv2.waitKey(1)
@@ -245,6 +263,10 @@ class CvDrone:
         self.lastImgTime = rospy.get_time()
         self.missingBodyParts = True
         mainPerson = None       # To store the main person in the frame
+
+        if self.takeoffFlag == 1:
+            self.droneState = 0
+
 
         if openposeMsg.human_list:
             for person in openposeMsg.human_list:
@@ -353,22 +375,27 @@ class CvDrone:
                 print("Hover Gesture!!")
                 self.command = self.PID.hover()
                 self.publishCommand(self.command)
-                self.hovering = True;
+                self.hovering = True
+                self.droneState = 3
             elif rightOut == 2 and leftOut == 2:
                 print("Unhover Gesture!!")
-                self.hovering = False;
+                self.hovering = False
+                self.droneState = 4
             elif rightOut == 1 and not self.hovering:
                 print("Right shift Gesture!!")
                 y, z = self.PID.get_centre()
                 self.PID.set_centre(y-5, z)
+                self.droneState = 2
             elif leftOut == 1 and not self.hovering:
                 print("Left shift Gesture!!")
                 y, z = self.PID.get_centre()
                 self.PID.set_centre(y+5, z)
+                self.droneState = 1
             
             # Landing
             if leftLand == 1 and rightLand == 1:
                 print("LAND")
+                self.droneState = 5
                 # self.goalController.compute_goal()
                 self.landingPub.publish(Empty())
         return
@@ -395,6 +422,7 @@ class CvDrone:
         frame = cv2.dilate(frame, kernel, dst=frame, iterations = 1)
         #frame = cv2.blur(frame,(10,10))
         return frame
+		
 
     def get_contours(self, frame):
         # Mask
