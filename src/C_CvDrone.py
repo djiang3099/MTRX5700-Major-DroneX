@@ -100,7 +100,8 @@ class CvDrone:
 		    3: "Hover",
 		    4: "Unhover",
 		    5: "Land",
-            -1: "Waiting for Takeoff"
+            -1: "Waiting for Takeoff",
+            -2: "Taking Off"
 		}
 
         self.droneState = -1
@@ -236,15 +237,14 @@ class CvDrone:
         text = self.droneOptionTexts[self.droneState]
         # img, text (x,y), font, fontScale, fontColor, lineType
         cv2.putText(image, text, (20,320), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (25,255,25), 2)
-        print("########################################",text)
         cv2.imshow("Output", image)
 
         cv2.waitKey(1)
 
         if self.first:
             size = frame.shape      
-            self.PID.set_centre(320, 180)
-            self.PID.set_target_size(130, 160)
+            self.PID.set_centre(320, 220)
+            self.PID.set_target_size(130, 140)
             # was 130 height
             print("Frame size: {}, {}".format(size[1], size[0])) # 640 wide, 360 high
             self.first = 0
@@ -366,11 +366,11 @@ class CvDrone:
                     abs(get_grad(lSh, lRst)) < 0.6:
                     if lSh.x < lElb.x < lRst.x and (lRst.x - lSh.x) > rlShiftThr:
                         leftOut = 1
-                        print("shift left")
+                        # print("shift left")
                 if (abs(lSh.x - lRst.x) < unhoverThr)  and ( lSh.y - lRst.y > unhoverUDThr ) and \
                     (lElb.x - lSh.x > unhoverLRThr) and (lElb.x - lRst.x > unhoverLRThr):
                     leftOut = 2
-                    print("Un-hover left")
+                    # print("Un-hover left")
 
                 if (abs(lSh.x - lRst.x) < unhoverThr)  and ( lRst.y - lSh.y > landUDThr ) and \
                     (lElb.x - lSh.x > unhoverLRThr) and (lElb.x - lRst.x > unhoverLRThr):
@@ -384,12 +384,12 @@ class CvDrone:
                     # print (rSh.x, rElb.x, rRst.x, "< < <     ", (rRst.x - rSh.x), "<", rlShiftThr)
                     if rSh.x > rElb.x > rRst.x and (rSh.x - rRst.x) > rlShiftThr:
                         rightOut = 1
-                        print("shift right")
+                        # print("shift right")
             
                 if (abs(rSh.x - rRst.x) < unhoverThr) and ( rSh.y - rRst.y > unhoverUDThr ) and \
                     (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
                     rightOut = 2
-                    print("Un-hover right")
+                    # print("Un-hover right")
 
                 if (abs(rSh.x - rRst.x) < unhoverThr) and ( rRst.y - rSh.y > landUDThr ) and \
                     (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
@@ -397,32 +397,38 @@ class CvDrone:
 
             # Both hands outstreched
             if rightOut == 1 and leftOut == 1:
-                print("Hover Gesture!!")
+                print("----------------------- Hover Gesture!!")
                 self.command = self.PID.hover()
                 self.publishCommand(self.command)
                 self.hovering = True
                 self.droneState = 3
             elif rightOut == 2 and leftOut == 2:
-                print("Unhover Gesture!!")
+                print("----------------------- Unhover Gesture!!")
                 self.hovering = False
                 self.droneState = 4
             elif rightOut == 1 and not self.hovering:
-                print("Right shift Gesture!!")
-                y, z = self.PID.get_centre()
-                self.PID.set_centre(y-5, z)
-                self.droneState = 2
-            elif leftOut == 1 and not self.hovering:
-                print("Left shift Gesture!!")
+                print("----------------------- Right shift Gesture!!")
                 y, z = self.PID.get_centre()
                 self.PID.set_centre(y+5, z)
+                self.droneState = 2
+            elif leftOut == 1 and not self.hovering:
+                print("----------------------- Left shift Gesture!!")
+                y, z = self.PID.get_centre()
+                self.PID.set_centre(y-5, z)
                 self.droneState = 1
             
             # Landing
             if leftLand == 1 and rightLand == 1:
-                print("LAND")
+                print("----------------------- Land Gesture")
                 self.droneState = 5
                 # self.goalController.compute_goal()
                 self.landingPub.publish(Empty())
+
+            # Wait for takeoff
+            if self.takeoffFlag == -1:
+                self.droneState = -1
+            elif self.takeoffFlag == 0:
+                self.droneState = -2
         return
 
 

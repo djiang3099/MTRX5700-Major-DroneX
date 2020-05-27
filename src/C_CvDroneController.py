@@ -75,10 +75,10 @@ class CvDroneController():
 
     def set_centre(self, centreY, centreZ):
         # Limit the centre to be within a margin
-        if centreY > 560:
-            centreY = 560
-        elif centreY < 80:
-            centreY = 80
+        if centreY > 520:
+            centreY = 520
+        elif centreY < 120:
+            centreY = 120
         
         if centreZ > 300:
             centreZ = 300
@@ -185,8 +185,8 @@ class CvDroneController():
 
             # print("PID X:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy * linXErr), \
             #     (self.ki_zy * self.i_linX), (self.kd_zy * d_linXErr)))
-            print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy*0.15 * linYErr), \
-                (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
+            # print("PID Y:   {:1.4}, {:1.4}, {:1.4}".format((self.kp_zy*0.15 * linYErr), \
+            #     (self.ki_zy * self.i_linY), (self.kd_zy * d_linYErr)))
             # print("PID Z:   {:+05.4f}, {:+05.4f}, {:+05.4f}".format((self.kp_zy * linZErr), \
             #     (self.ki_zy * self.i_linZ), (self.kd_zy * d_linZErr)))
             
