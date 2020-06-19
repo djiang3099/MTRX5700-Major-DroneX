@@ -216,10 +216,10 @@ class CvDroneController():
         self.plotCommandY.append(command.linear.y)
         self.plotCommandZ.append(command.linear.z)
         self.plotTime.append(time)
-        # print(len(self.plotTime))
-        # print("11111")
 
         return command
+
+    ################### FOR ABSOLUTE POSE CONTROL ############################
 
     # Setter for current drone pose
     # Takes a geometry_msgs.msg.pose.pose type as input.

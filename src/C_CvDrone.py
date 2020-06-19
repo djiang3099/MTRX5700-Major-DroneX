@@ -186,6 +186,7 @@ class CvDrone:
         return
 
     def cam_callback(self, image_message):
+        ######################## FOR GREEN VISION TARGET #######################
         # print("Image received")        
         # Convert from ROS image to opencv image
         ###### For non compressed images
@@ -200,6 +201,8 @@ class CvDrone:
 
         # self.output, targetY, targetZ, targetW, targetH = self.get_contours(frame)
         # self.output, _, _, _, _ = self.get_contours(frame)
+
+        ########################## FOR OPENPOSE TRACKING #######################
 
         # Mark the currently found target
         cv2.rectangle(image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 2)
@@ -251,21 +254,6 @@ class CvDrone:
             print("Frame size: {}, {}".format(size[1], size[0])) # 640 wide, 360 high
             self.first = 0
 
-        # if not self.targetFound:
-        #     print("----------------------- Target lost")
-        #     self.command = self.PID.hover()
-        # else:
-        #     time = rospy.get_time() - self.initTime
-        #     self.command = self.PID.compute(time, targetY, targetZ, targetW, targetH)
-
-        
-
-        # print("##############missing body parts?", self.missingBodyParts)
-
-        # if self.takeoffFlag == 1:
-        #     # command = self.PID.hover()
-        #     self.commandDrone(command)
-
         return
 
     def takeoff_callback(self, takeoffMsg):
@@ -282,6 +270,8 @@ class CvDrone:
     def land_callback(self, landMsg):
         print ("---------------------------------- Land, Battery: {}, Yaw: {}".format(self.battery, self.PID.yaw))
 
+
+        # Plot the odometry graphs
         print(len(self.PID.plotTime), len(self.PID.plotErrorX), len(self.PID.plotCommandX))
         
         for t in self.PID.plotTime:
@@ -468,6 +458,7 @@ class CvDrone:
             print("Service call failed: %s"%e)
         return
 
+    ################# Code for absolute pose tracking ##########################
     def preprocess(self, image):
         frame = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         kernel = np.ones((5,5), np.uint8)   # For Erosion/dilation
