@@ -71,6 +71,15 @@ class CvDroneController():
         self.refWidth = 10
         self.goalYaw = 0
 
+        # For result plots
+        self.plotErrorX = []
+        self.plotErrorY = []
+        self.plotErrorZ = []
+        self.plotCommandX = []
+        self.plotCommandY = []
+        self.plotCommandZ = []
+        self.plotTime = []
+
         return
 
     def set_centre(self, centreY, centreZ):
@@ -195,6 +204,21 @@ class CvDroneController():
         print("Command: {:+05.4f}, {:+05.4f}, {:+05.4f}, {:+05.4f}, {:+05.4f}, {:+05.4f}\n".format(command.linear.x,\
             command.linear.y, command.linear.z, command.angular.x ,command.angular.y,\
                 command.angular.z))
+
+        # For result plots
+        # self.plotErrorX.append(linXErr/50)
+        # self.plotErrorY.append(linYErr/100)
+        # self.plotErrorZ.append(linZErr/50)
+        self.plotErrorX.append(linXErr/1)
+        self.plotErrorY.append(linYErr/1)
+        self.plotErrorZ.append(linZErr/1)
+        self.plotCommandX.append(command.linear.x)
+        self.plotCommandY.append(command.linear.y)
+        self.plotCommandZ.append(command.linear.z)
+        self.plotTime.append(time)
+        # print(len(self.plotTime))
+        # print("11111")
+
         return command
 
     # Setter for current drone pose
@@ -287,4 +311,5 @@ class CvDroneController():
             command.angular.y = 0.0
 
         print(command)
+
         return command

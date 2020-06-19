@@ -28,6 +28,8 @@ from ardrone_autonomy.srv import CamSelect
 from get_gradient import get_grad
 from C_CvDroneController import CvDroneController
 
+import matplotlib.pyplot as plt
+
 NECK = 1
 RSH = 2
 RELB = 3
@@ -279,6 +281,26 @@ class CvDrone:
 
     def land_callback(self, landMsg):
         print ("---------------------------------- Land, Battery: {}, Yaw: {}".format(self.battery, self.PID.yaw))
+
+        print(len(self.PID.plotTime), len(self.PID.plotErrorX), len(self.PID.plotCommandX))
+        
+        for t in self.PID.plotTime:
+            t = t - self.PID.plotTime[0]
+
+        plt.plot(self.PID.plotTime, self.PID.plotErrorX , label = 'X Error')
+        plt.hold(True)
+        plt.plot(self.PID.plotTime, self.PID.plotErrorY , label = 'Y Error')
+        plt.plot(self.PID.plotTime, self.PID.plotErrorZ , label = 'Z Error')
+        
+        # plt.plot(self.PID.plotTime, self.PID.plotCommandX , label = 'X Command')
+        # plt.plot(self.PID.plotTime, self.PID.plotCommandY , label = 'Y Command')
+        # plt.plot(self.PID.plotTime, self.PID.plotCommandZ , label = 'Z Command')
+
+        legend = plt.legend()
+        plt.xlabel('Time(s)', fontsize=18)
+        plt.ylabel('Error (arbitary)', fontsize=18)
+
+        plt.show()
 
         return
 
