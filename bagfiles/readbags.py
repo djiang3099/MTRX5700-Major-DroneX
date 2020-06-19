@@ -7,10 +7,15 @@ from tf.transformations import euler_from_quaternion
 import csv
 import matplotlib.pyplot as plt
 
+params = {'xtick.labelsize': 'x-large',
+	  'ytick.labelsize': 'x-large',
+	'axes.labelsize': 'x-large'}
+plt.rcParams.update(params)
+
 #bag = rosbag.Bag("path1.bag")
 #bag = rosbag.Bag("path2.bag")
 #bag = rosbag.Bag("SLAMBag.bag")
-bag = rosbag.Bag("bagfiles/sun_N_007_005_pYaw.bag")
+bag = rosbag.Bag("withVideo/final?/wed_d_tracking1.bag")
 print("Starting...")
 # rospy.init_node("readBags")
 
@@ -47,7 +52,7 @@ for topic, msg, t in bag.read_messages(topics=["/dronex/odom"]):
 	xVect.append(x)
 	yVect.append(y)
 	zVect.append(z)
-	yawVect.append(yaw)
+	yawVect.append(yaw*180/3.1415)
 
 	t_odom_Vect.append(t.to_time() - t_first)
 
@@ -91,18 +96,20 @@ plt.plot(t_odom_Vect, xVect , label = 'odom X')
 plt.hold(True)
 plt.plot(t_odom_Vect, yVect , label = 'odom Y')
 plt.plot(t_odom_Vect, zVect , label = 'odom Z')
-plt.plot(t_odom_Vect, yawVect , label = 'odom Yaw')
+# plt.plot(t_odom_Vect, yawVect , label = 'odom Yaw')
 
 plt.plot(t_com_Vect, com_x_vect , label = 'com_vel x')
 plt.plot(t_com_Vect, com_y_vect , label = 'com_vel y')
 plt.plot(t_com_Vect, com_z_vect , label = 'com_vel z')
-plt.plot(t_com_Vect, com_az_vect , label = 'com_vel az')
+#plt.plot(t_com_Vect, com_az_vect , label = 'com_vel az')
 
 plt.hlines(goal_x, t_odom_Vect[0], t_odom_Vect[-1], label = 'x goal')
 plt.hlines(goal_y, t_odom_Vect[0], t_odom_Vect[-1], label = 'y goal')
 plt.hlines(goal_z, t_odom_Vect[0], t_odom_Vect[-1], label = 'z goal')
-plt.hlines(goal_az, t_odom_Vect[0], t_odom_Vect[-1], label = 'az goal')
+#plt.hlines(goal_az, t_odom_Vect[0], t_odom_Vect[-1], label = 'az goal')
 legend = plt.legend()
+plt.xlabel('Time(s)', fontsize=18)
+plt.ylabel('Yaw (degrees)', fontsize=18)
 
 plt.show()
 #rospy.sleep(5.)

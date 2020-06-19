@@ -71,6 +71,15 @@ class CvDroneController():
         self.refWidth = 10
         self.goalYaw = 0
 
+        # For result plots
+        self.plotErrorX = []
+        self.plotErrorY = []
+        self.plotErrorZ = []
+        self.plotCommandX = []
+        self.plotCommandY = []
+        self.plotCommandZ = []
+        self.plotTime = []
+
         return
 
     def set_centre(self, centreY, centreZ):
@@ -195,4 +204,15 @@ class CvDroneController():
         print("Command: {:+05.4f}, {:+05.4f}, {:+05.4f}, {:+05.4f}, {:+05.4f}, {:+05.4f}\n".format(command.linear.x,\
             command.linear.y, command.linear.z, command.angular.x ,command.angular.y,\
                 command.angular.z))
+
+        # For result plots
+        self.plotErrorX.append(linXErr)
+        self.plotErrorY.append(linYErr)
+        self.plotErrorZ.append(linZErr)
+        self.plotCommandX.append(controlX)
+        self.plotCommandY.append(controlY)
+        self.plotCommandZ.append(controlZ)
+        self.plotTime.append(time)
+
+
         return command

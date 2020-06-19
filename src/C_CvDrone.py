@@ -218,6 +218,21 @@ class CvDrone:
     def land_callback(self, landMsg):
         print ("----------------------- Land, Battery: {}", self.battery)
 
+        plt.plot(self.PID.plotTime, self.PID.plotErrorX , label = 'X Error')
+        plt.hold(True)
+        plt.plot(self.PID.plotTime, self.PID.plotErrorY , label = 'X Error')
+        plt.plot(self.PID.plotTime, self.PID.plotErrorz , label = 'X Error')
+        
+        plt.plot(self.PID.plotTime, self.PID.plotCommandX , label = 'X Error')
+        plt.plot(self.PID.plotTime, self.PID.plotCommandy , label = 'X Error')
+        plt.plot(self.PID.plotTime, self.PID.plotCommandz , label = 'X Error')
+
+        legend = plt.legend()
+        plt.xlabel('Time(s)', fontsize=18)
+        plt.ylabel('Error (pixels), Command(arbitary)', fontsize=18)
+
+        plt.show()
+
         return
 
     def preprocess(self, image):
