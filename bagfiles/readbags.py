@@ -7,13 +7,10 @@ from tf.transformations import euler_from_quaternion
 import csv
 import matplotlib.pyplot as plt
 
-#bag = rosbag.Bag("path1.bag")
-#bag = rosbag.Bag("path2.bag")
-#bag = rosbag.Bag("SLAMBag.bag")
 bag = rosbag.Bag("bagfiles/sun_N_007_005_pYaw.bag")
 print("Starting...")
-# rospy.init_node("readBags")
 
+#variable declaration
 xVect = []
 yVect = []
 zVect = []
@@ -32,10 +29,10 @@ t_goal_vect = []
 
 first = True
 t_first = 0
+
 for topic, msg, t in bag.read_messages(topics=["/dronex/odom"]):
 	quat = msg.pose.pose.orientation
 	roll, pitch, yaw = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
-	#print ("{},{}".format(  rospy.get_rostime()  ,yaw))
 	x = msg.pose.pose.position.x
 	y = msg.pose.pose.position.y
 	z = msg.pose.pose.position.z
@@ -51,7 +48,6 @@ for topic, msg, t in bag.read_messages(topics=["/dronex/odom"]):
 
 	t_odom_Vect.append(t.to_time() - t_first)
 
-	#rospy.sleep(0.01)
 
 first = True
 for topic, msg, t in bag.read_messages(topics=["/cmd_vel"]):
@@ -84,9 +80,6 @@ for topic, msg, t in bag.read_messages(topics=["/droneGoal"]):
 
 	t_goal_vect.append(t.to_time() - t_first)
 
-#for topic, msg, t in bag.read_messages(topics=["/scan"]):
-
-
 plt.plot(t_odom_Vect, xVect , label = 'odom X')
 plt.hold(True)
 plt.plot(t_odom_Vect, yVect , label = 'odom Y')
@@ -105,7 +98,6 @@ plt.hlines(goal_az, t_odom_Vect[0], t_odom_Vect[-1], label = 'az goal')
 legend = plt.legend()
 
 plt.show()
-#rospy.sleep(5.)
-
+#cleanup
 bag.close()
 print("End")
