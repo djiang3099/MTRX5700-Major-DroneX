@@ -67,7 +67,6 @@ class CvDrone:
         self.landSub = rospy.Subscriber("/ardrone/land", std_msgs.msg.Empty, self.land_callback, queue_size=1000)
         self.openposeSub = rospy.Subscriber("/openpose_ros/human_list",OpenPoseHumanList, self.openpose_callback, queue_size=1000)
 
-
         self.commandPub = rospy.Publisher('cmd_vel', geometry_msgs.msg.Twist, queue_size=100)    
         self.zeroOdomPub = rospy.Publisher('dronex/odom', nav_msgs.msg.Odometry, queue_size=100)
         self.landingPub = rospy.Publisher('ardrone/land', std_msgs.msg.Empty, queue_size=10)
@@ -80,20 +79,15 @@ class CvDrone:
         self.centreX = None
         self.centreY = None
 
-
         self.output = np.array([360,640,3])
-
 
         self.box_x1 = 0
         self.box_x2 = 0
         self.box_y1 = 0
         self.box_y2 = 0
 
-        # self.switch_camera(0)
-
         self.missingBodyParts = True
         self.hovering = False
-
 
         self.droneOptionTexts= {
 		    0: "No Gesture Command Received",
@@ -110,7 +104,6 @@ class CvDrone:
 
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
-            # cv2.imshow("Output", self.output)
             r.sleep()
 
         print("Battery state: {}".format(self.battery))
@@ -122,16 +115,11 @@ class CvDrone:
             self.initPos = copy.copy(odomMsg.pose.pose.position)
             quat = odomMsg.pose.pose.orientation
             self.initRPY = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
-            # print("Prev alt: {:.4f}, curr alt: {:.4f}".format(self.prevAltitude))
             if self.prevAltitude > self.initPos.z and self.waitReady == 1:
                 self.takeoffFlag = 1
             elif self.prevAltitude < self.initPos.z: 
                 self.prevAltitude = self.initPos.z
             
-            # print('Drone taking off!! Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
-            #     .format(self.initPos.x,self.initPos.y,self.initPos.z,\
-            #         self.initRPY[0],self.initRPY[1],self.initRPY[2]))
-        
         elif self.takeoffFlag == 1:     # Drone is in flight
             # Subtract current odom by first odom
             posX = odomMsg.pose.pose.position.x- self.initPos.x
@@ -150,9 +138,6 @@ class CvDrone:
             odomMsg.pose.pose.orientation = Quaternion(x,y,z,w)
         
             self.PID.yaw = newYaw
-
-            # print('Drone flying!! Zeroed Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
-            #     .format(posX, posY, posZ, newRoll, newPitch, newYaw))
 
             # Publish the subtracted odom
             self.pose = odomMsg.pose.pose
@@ -175,9 +160,6 @@ class CvDrone:
             pos = copy.copy(odomMsg.pose.pose.position)
             quat = odomMsg.pose.pose.orientation
             rpy = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
-            # print('Waiting for takeoff... Battery: {}, Odom Pose:{:.2f},{:.2f},{:.2f},{:.2f},{:.2f},{:.2f}'\
-            #     .format(self.battery,pos.x,pos.y,pos.z,rpy[0],rpy[1],rpy[2]))
-            
         return
 
     def navdata_callback(self, navdataMsg):
@@ -191,7 +173,6 @@ class CvDrone:
         # Convert from ROS image to opencv image
         ###### For non compressed images
         image = self.bridge.imgmsg_to_cv2(image_message, desired_encoding="bgr8")
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         
         ###### For compressed images
         # np_arr = np.fromstring(image_message.data, np.uint8)  
@@ -206,7 +187,6 @@ class CvDrone:
 
         # Mark the currently found target
         cv2.rectangle(image,(self.box_x1, self.box_y1), (self.box_x2, self.box_y2), (255, 0, 0), 2)
-        # print("size", self.box_x2 - self.box_x1, self.box_y2 - self.box_y1)
         cv2.circle(image, ( (self.box_x1 + self.box_x2)/2  , (self.box_y1 + self.box_y2)/2  ), 3, (0,255,0), 2)
 
         
@@ -269,8 +249,6 @@ class CvDrone:
 
     def land_callback(self, landMsg):
         print ("---------------------------------- Land, Battery: {}, Yaw: {}".format(self.battery, self.PID.yaw))
-
-
         # Plot the odometry graphs
         print(len(self.PID.plotTime), len(self.PID.plotErrorX), len(self.PID.plotCommandX))
         
@@ -281,10 +259,6 @@ class CvDrone:
         plt.hold(True)
         plt.plot(self.PID.plotTime, self.PID.plotErrorY , label = 'Y Error')
         plt.plot(self.PID.plotTime, self.PID.plotErrorZ , label = 'Z Error')
-        
-        # plt.plot(self.PID.plotTime, self.PID.plotCommandX , label = 'X Command')
-        # plt.plot(self.PID.plotTime, self.PID.plotCommandY , label = 'Y Command')
-        # plt.plot(self.PID.plotTime, self.PID.plotCommandZ , label = 'Z Command')
 
         legend = plt.legend()
         plt.xlabel('Time(s)', fontsize=18)
@@ -303,7 +277,6 @@ class CvDrone:
 
         if self.takeoffFlag == 1:
             self.droneState = 0
-
 
         if openposeMsg.human_list:
             for person in openposeMsg.human_list:
@@ -390,18 +363,14 @@ class CvDrone:
 
             # Right hand outstretched?   
             if rSh.x and rElb.x and rRst.x != 0:
-                # print(abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ), "< 0.3??  ",  abs(get_grad(rSh, rRst)), "< 0.6?")
                 if abs( get_grad(rSh, rElb) - get_grad(rSh, rRst) ) < 0.3 and \
                     abs( get_grad(rSh, rRst) ) < 0.6:
-                    # print (rSh.x, rElb.x, rRst.x, "< < <     ", (rRst.x - rSh.x), "<", rlShiftThr)
                     if rSh.x > rElb.x > rRst.x and (rSh.x - rRst.x) > rlShiftThr:
                         rightOut = 1
-                        # print("shift right")
             
                 if (abs(rSh.x - rRst.x) < unhoverThr) and ( rSh.y - rRst.y > unhoverUDThr ) and \
                     (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
                     rightOut = 2
-                    # print("Un-hover right")
 
                 if (abs(rSh.x - rRst.x) < unhoverThr) and ( rRst.y - rSh.y > landUDThr ) and \
                     (rSh.x - rElb.x > unhoverLRThr) and (rRst.x - rElb.x > unhoverLRThr):
@@ -433,7 +402,6 @@ class CvDrone:
             if leftLand == 1 and rightLand == 1:
                 print("----------------------- Land Gesture")
                 self.droneState = 5
-                # self.goalController.compute_goal()
                 self.landingPub.publish(Empty())
 
             # Wait for takeoff
@@ -464,7 +432,6 @@ class CvDrone:
         kernel = np.ones((5,5), np.uint8)   # For Erosion/dilation
         frame = cv2.erode(frame, kernel, dst=frame, iterations = 1)
         frame = cv2.dilate(frame, kernel, dst=frame, iterations = 1)
-        #frame = cv2.blur(frame,(10,10))
         return frame
 		
 
@@ -481,8 +448,6 @@ class CvDrone:
                 maxContour = contour
                 maxArea = cv2.contourArea(contour)
 
-        # print("Max area", maxArea)
-
         if maxArea < 1000:
             self.targetFound = False
         else: 
@@ -493,7 +458,6 @@ class CvDrone:
         contourImage = cv2.cvtColor(contourImage, cv2.COLOR_HSV2BGR, dst=contourImage)  
 
         # Draw a big bounding rect around all valid contours
-        # bigCont = np.concatenate(validCont)
         x,y,w,h = cv2.boundingRect(maxContour)
         cv2.rectangle(contourImage, (x,y), (x+w-1, y+h-1), (0,255,0), 2)
 
@@ -505,12 +469,10 @@ class CvDrone:
             valid = False
         targetY = x + w / 2
         targetZ = y + h / 2
-        
-        # print("Valid? {} | No. of Contours: {}".format(valid, len(validCont)))
+
         concat = cv2.vconcat([contourImage,maskline])
         return concat, targetY, targetZ, w, h
 
     def publishCommand(self, command):
-        # print("---------------------------------------------- publish")
         self.commandPub.publish(command)
         return
